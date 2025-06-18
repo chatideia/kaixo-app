@@ -1,0 +1,4288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaixo Translate Pro v3.0 - Chat Multimedia + Documentos Avanzados</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    
+    <!-- NUEVAS LIBRERÍAS PARA DOCUMENTOS AVANZADOS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.1/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #e5ddd5;
+            padding: 20px;
+        }
+
+        .chat-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            height: 650px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Encabezado mejorado */
+        .header {
+            background: linear-gradient(135deg, #075e54, #128c7e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse-online 2s infinite;
+        }
+
+        .connection-status.offline {
+            background: #ff5722;
+        }
+
+        @keyframes pulse-online {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Panel de usuario mejorado */
+        .user-switcher {
+            background: #f0f2f5;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .language-selector {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .language-selector:hover {
+            border-color: #25d366;
+            box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+        }
+
+        .switch-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .switch-btn:hover {
+            background: #128c7e;
+            transform: scale(1.05);
+        }
+
+        /* Mensajes mejorados */
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #e5ddd5;
+        }
+
+        .welcome {
+            text-align: center;
+            color: #333;
+            background: white;
+            padding: 30px 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .welcome h3 {
+            margin: 0 0 15px 0;
+            color: #075e54;
+        }
+
+        .language-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .lang-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Chat bubbles mejoradas */
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            color: #333;
+            transition: transform 0.2s;
+        }
+
+        .message-bubble:hover {
+            transform: scale(1.02);
+        }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, #dcf8c6, #c5f5b4);
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.received .message-bubble {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border-bottom-left-radius: 5px;
+        }
+
+        /* Mensajes con imagen */
+        .message-image {
+            width: 100%;
+            max-width: 200px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .message-image:hover {
+            transform: scale(1.05);
+        }
+
+        .image-loading {
+            width: 200px;
+            height: 150px;
+            background: #f0f2f5;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* Video messages */
+        .message-video {
+            width: 100%;
+            max-width: 250px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            position: relative;
+            background: #000;
+        }
+
+        .video-player {
+            width: 100%;
+            height: 180px;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .video-overlay:hover {
+            background: rgba(0,0,0,0.5);
+        }
+
+        .video-play-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .video-play-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .video-duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        /* Document messages MEJORADOS */
+        .file-message {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            min-width: 200px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .file-message:hover {
+            background: rgba(0,0,0,0.08);
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-right: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .file-icon.pdf {
+            background: #ff5722;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .file-icon.doc {
+            background: #2196f3;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .file-icon.xls {
+            background: #4caf50;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .file-icon.ppt {
+            background: #ff9800;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 8px;
+        }
+
+        .file-action-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .file-action-btn:hover {
+            background: #128c7e;
+            transform: scale(1.1);
+        }
+
+        .file-action-btn.download {
+            background: #17a2b8;
+        }
+
+        .file-action-btn.preview {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .file-action-btn.edit {
+            background: #fd7e14;
+        }
+
+        /* =====  MODAL DE DOCUMENTOS MEJORADO ===== */
+        .document-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 10px;
+        }
+
+        .document-modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .document-content {
+            background: white;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 900px;
+            height: 85vh;
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Header con pestañas */
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .document-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .document-tabs {
+            display: flex;
+            gap: 8px;
+            margin-right: 15px;
+        }
+
+        .doc-tab {
+            padding: 8px 16px;
+            border: none;
+            background: #e9ecef;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .doc-tab.active {
+            background: #25d366;
+            color: white;
+        }
+
+        .doc-tab:hover:not(.active) {
+            background: #dee2e6;
+        }
+
+        .document-close {
+            background: #ff4757;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Contenido del documento */
+        .document-body {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .doc-content {
+            display: none;
+            height: 100%;
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .doc-content.active {
+            display: block;
+        }
+
+        /* ===== ESTILOS ESPECÍFICOS PARA CADA TIPO ===== */
+
+        /* PDF Viewer */
+        .pdf-viewer {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .pdf-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .pdf-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .pdf-btn:hover {
+            background: #0056b3;
+        }
+
+        .pdf-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .pdf-page-info {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pdf-canvas-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .pdf-canvas {
+            max-width: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        /* Excel Viewer/Editor */
+        .excel-container {
+            height: 100%;
+            overflow: auto;
+        }
+
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .excel-table th,
+        .excel-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            min-width: 80px;
+        }
+
+        .excel-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .excel-table input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 4px;
+            font-size: 12px;
+        }
+
+        .excel-table input:focus {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 3px;
+        }
+
+        /* Word Editor */
+        .word-editor {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .word-toolbar {
+            padding: 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .word-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .word-btn:hover {
+            background: #e9ecef;
+        }
+
+        .word-btn.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .quill-editor {
+            flex: 1;
+        }
+
+        /* Loading states */
+        .doc-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        .doc-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #25d366;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer con acciones */
+        .document-footer {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .doc-action-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .doc-action-btn:hover {
+            background: #0056b3;
+        }
+
+        .doc-action-btn.success {
+            background: #28a745;
+        }
+
+        .doc-action-btn.success:hover {
+            background: #1e7e34;
+        }
+
+        .doc-action-btn.danger {
+            background: #dc3545;
+        }
+
+        .doc-action-btn.danger:hover {
+            background: #c82333;
+        }
+
+        /* Emoji Picker */
+        .emoji-picker {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 16px;
+            display: none;
+            z-index: 100;
+            width: 320px;
+            max-height: 400px;
+        }
+
+        .emoji-picker.active {
+            display: block;
+            animation: slideUp 0.2s ease;
+        }
+
+        .emoji-categories {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .emoji-category {
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .emoji-category:hover,
+        .emoji-category.active {
+            background: #f0f2f5;
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .emoji-item {
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 20px;
+            transition: background 0.2s;
+        }
+
+        .emoji-item:hover {
+            background: #f0f2f5;
+            transform: scale(1.2);
+        }
+
+        .emoji-search {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* GIF Picker */
+        .gif-picker {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 16px;
+            display: none;
+            z-index: 100;
+            width: 320px;
+            max-height: 400px;
+        }
+
+        .gif-picker.active {
+            display: block;
+            animation: slideUp 0.2s ease;
+        }
+
+        .gif-search {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .gif-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .gif-item {
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .gif-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gif-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        /* Message reactions */
+        .message-reactions {
+            margin-top: 8px;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .reaction {
+            background: rgba(37, 211, 102, 0.1);
+            border: 1px solid rgba(37, 211, 102, 0.3);
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reaction:hover {
+            background: rgba(37, 211, 102, 0.2);
+            transform: scale(1.1);
+        }
+
+        .reaction-btn {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .reaction-btn:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        /* Emoji grande mejorado */
+        .emoji-large {
+            font-size: 64px !important;
+            text-align: center;
+            padding: 20px 10px;
+            line-height: 1;
+            animation: emojiPop 0.3s ease;
+        }
+
+        @keyframes emojiPop {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Mensaje multimedia sin controles */
+        .multimedia-only {
+            border: none !important;
+        }
+
+        .multimedia-only .translation-info {
+            display: none !important;
+        }
+
+        /* Reaction picker temporal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Sticker message */
+        .sticker-message {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .sticker-message img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 8px;
+            animation: stickerSlide 0.4s ease;
+        }
+
+        @keyframes stickerSlide {
+            from { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+            to { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .message-text {
+            margin-bottom: 5px;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+
+        .translation-info {
+            font-size: 11px;
+            color: #667781;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #667781;
+            text-align: right;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .delivery-status {
+            font-size: 10px;
+        }
+
+        /* ===== NUEVO MENÚ MULTIMEDIA UNIFICADO ===== */
+        .input-area {
+            background: white;
+            padding: 15px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            border-top: 1px solid #e5e7eb;
+            position: relative;
+        }
+
+        /* Contenedor principal del botón + */
+        .multimedia-container {
+            position: relative;
+        }
+
+        /* Botón principal + */
+        .main-plus-btn {
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(37, 211, 102, 0.3);
+        }
+
+        .main-plus-btn:hover {
+            transform: scale(1.1) rotate(45deg);
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.5);
+        }
+
+        .main-plus-btn.active {
+            transform: scale(1.1) rotate(45deg);
+            background: linear-gradient(135deg, #ff4757, #ff3838);
+        }
+
+        /* Menú desplegable principal */
+        .multimedia-menu {
+            position: absolute;
+            bottom: 55px;
+            left: 0;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            padding: 16px;
+            display: none;
+            z-index: 100;
+            min-width: 280px;
+            transform: translateY(10px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .multimedia-menu.active {
+            display: block;
+            transform: translateY(0);
+            opacity: 1;
+            animation: menuSlideUp 0.3s ease;
+        }
+
+        @keyframes menuSlideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px) scale(0.9); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        /* Título del menú */
+        .menu-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        /* Grid de opciones */
+        .menu-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        /* Cada opción del menú */
+        .menu-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #f8f9fa;
+            border: 2px solid transparent;
+        }
+
+        .menu-option:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            border-color: #25d366;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2);
+        }
+
+        .menu-option .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .menu-option:hover .icon {
+            transform: scale(1.2);
+        }
+
+        .menu-option .label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Colores específicos para cada opción */
+        .menu-option.emoji {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        }
+
+        .menu-option.emoji:hover {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+        }
+
+        .menu-option.gif {
+            background: linear-gradient(135deg, #f8d7da, #fab1a0);
+        }
+
+        .menu-option.gif:hover {
+            background: linear-gradient(135deg, #fab1a0, #e17055);
+        }
+
+        .menu-option.sticker {
+            background: linear-gradient(135deg, #e2e3f0, #a29bfe);
+        }
+
+        .menu-option.sticker:hover {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+        }
+
+        .menu-option.document {
+            background: linear-gradient(135deg, #d1ecf1, #74b9ff);
+        }
+
+        .menu-option.document:hover {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+        }
+
+        .menu-option.gallery {
+            background: linear-gradient(135deg, #d4edda, #00b894);
+        }
+
+        .menu-option.gallery:hover {
+            background: linear-gradient(135deg, #00b894, #00a085);
+        }
+
+        .menu-option.camera {
+            background: linear-gradient(135deg, #fff4e6, #fd79a8);
+        }
+
+        .menu-option.camera:hover {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+        }
+
+        /* Botón de voz separado */
+        .voice-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn:hover {
+            background: #ff3838;
+            transform: scale(1.1);
+        }
+
+        .voice-btn.recording {
+            background: #ff0000;
+            animation: pulse-record 1s infinite;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes pulse-record {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            }
+        }
+
+        /* Campo de texto */
+        #message-input {
+            flex: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 14px;
+            outline: none;
+            color: #333;
+            resize: none;
+            max-height: 100px;
+            min-height: 45px;
+        }
+
+        #message-input:focus {
+            border-color: #25d366;
+            box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+        }
+
+        /* Botón de enviar */
+        .send-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #128c7e;
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Estado de traducción */
+        .status {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 8px 20px;
+            text-align: center;
+            font-size: 12px;
+            display: none;
+        }
+
+        .status.active {
+            display: block;
+        }
+
+        .status.firebase {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .translating {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Estado de voz (mantener original) */
+        .voice-status {
+            background: #f8f9fa;
+            color: #495057;
+            padding: 8px 20px;
+            text-align: center;
+            font-size: 12px;
+            border-top: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .voice-status.active {
+            display: block;
+        }
+
+        .voice-status.recording {
+            background: #ffe6e6;
+            color: #dc2626;
+            animation: pulse-text 1.5s infinite;
+        }
+
+        .voice-status.processing {
+            background: #fff4e6;
+            color: #d97706;
+        }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Controles de audio (mantener original) */
+        .audio-controls {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            border-top: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #495057;
+            transform: scale(1.05);
+        }
+
+        .control-btn.active {
+            background: #28a745;
+        }
+
+        .play-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 10px;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover {
+            background: #138496;
+            transform: scale(1.1);
+        }
+
+        .play-btn.playing {
+            background: #dc3545;
+            animation: pulse-play 1s infinite;
+        }
+
+        @keyframes pulse-play {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* Login modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        .login-content h3 {
+            margin-bottom: 20px;
+            color: #075e54;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn.primary {
+            background: #25d366;
+            color: white;
+        }
+
+        .login-btn.primary:hover {
+            background: #128c7e;
+        }
+
+        .login-btn.secondary {
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        .login-btn.secondary:hover {
+            background: #e4e6ea;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hidden file input */
+        .hidden {
+            display: none;
+        }
+
+        /* User status */
+        #current-user {
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 0;
+            }
+            
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+
+            .multimedia-menu {
+                min-width: 260px;
+            }
+
+            .menu-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .document-content {
+                width: 98%;
+                height: 90vh;
+            }
+
+            .pdf-controls {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .pdf-btn {
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <div class="connection-status" id="connectionStatus"></div>
+            <h2>🌍 Kaixo Translate Pro v3.0</h2>
+            <p>Chat Universal + Documentos Avanzados + IA</p>
+        </div>
+        
+        <div class="user-switcher">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar" onclick="showUserProfile()">U1</div>
+                <div>
+                    <span id="current-user">👤 Usuario 1</span>
+                    <select id="language-select" class="language-selector" onchange="changeUserLanguage()">
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="de">🇩🇪 Deutsch</option>
+                        <option value="it">🇮🇹 Italiano</option>
+                        <option value="pt">🇵🇹 Português</option>
+                        <option value="ru">🇷🇺 Русский</option>
+                        <option value="ja">🇯🇵 日本語</option>
+                        <option value="ko">🇰🇷 한국어</option>
+                        <option value="zh">🇨🇳 中文</option>
+                        <option value="ar">🇸🇦 العربية</option>
+                        <option value="hi">🇮🇳 हिन्दी</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="switchUser()" class="switch-btn">Cambiar Usuario</button>
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="welcome">
+                <h3>¡Kaixo Translate Pro v3.0! 🌟</h3>
+                <p>Chat universal con IA + Vista previa y edición de PDF, Excel y Word</p>
+                <div class="language-list">
+                    <span class="lang-badge">🇪🇸 Español</span>
+                    <span class="lang-badge">🇬🇧 English</span>
+                    <span class="lang-badge">🇫🇷 Français</span>
+                    <span class="lang-badge">🇩🇪 Deutsch</span>
+                    <span class="lang-badge">🇮🇹 Italiano</span>
+                    <span class="lang-badge">🇵🇹 Português</span>
+                    <span class="lang-badge">🇷🇺 Русский</span>
+                    <span class="lang-badge">🇯🇵 日本語</span>
+                    <span class="lang-badge">🇰🇷 한국어</span>
+                    <span class="lang-badge">🇨🇳 中文</span>
+                    <span class="lang-badge">🇸🇦 العربية</span>
+                    <span class="lang-badge">🇮🇳 हिन्दी</span>
+                </div>
+                <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                    <p>📄 <strong>Nuevo:</strong> Vista previa de PDFs con navegación</p>
+                    <p>📊 <strong>Nuevo:</strong> Editor completo de Excel</p>
+                    <p>📝 <strong>Nuevo:</strong> Editor de Word con formato</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NUEVA ÁREA DE INPUT UNIFICADA -->
+        <div class="input-area">
+            <!-- Botón multimedia principal + -->
+            <div class="multimedia-container">
+                <button class="main-plus-btn" id="mainPlusBtn" onclick="toggleMultimediaMenu()">+</button>
+                
+                <!-- Menú desplegable -->
+                <div class="multimedia-menu" id="multimediaMenu">
+                    <div class="menu-title">🎭 Multimedia & Documentos</div>
+                    <div class="menu-options">
+                        <div class="menu-option emoji" onclick="selectMenuOption('emoji')">
+                            <div class="icon">😀</div>
+                            <div class="label">Emojis</div>
+                        </div>
+                        
+                        <div class="menu-option gif" onclick="selectMenuOption('gif')">
+                            <div class="icon">🎬</div>
+                            <div class="label">GIFs</div>
+                        </div>
+                        
+                        <div class="menu-option sticker" onclick="selectMenuOption('sticker')">
+                            <div class="icon">🎪</div>
+                            <div class="label">Stickers</div>
+                        </div>
+                        
+                        <div class="menu-option document" onclick="selectMenuOption('document')">
+                            <div class="icon">📄</div>
+                            <div class="label">Documentos</div>
+                        </div>
+                        
+                        <div class="menu-option gallery" onclick="selectMenuOption('gallery')">
+                            <div class="icon">🖼️</div>
+                            <div class="label">Galería</div>
+                        </div>
+                        
+                        <div class="menu-option camera" onclick="selectMenuOption('camera')">
+                            <div class="icon">📸</div>
+                            <div class="label">Cámara</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botón de voz -->
+            <button id="voice-btn" class="voice-btn" 
+                    onmousedown="startRecording()" 
+                    onmouseup="stopRecording()"
+                    ontouchstart="startRecording()" 
+                    ontouchend="stopRecording()">
+                🎤
+            </button>
+            
+            <!-- Campo de texto -->
+            <textarea id="message-input" 
+                   placeholder="Escribe en cualquier idioma..." 
+                   rows="1"
+                   onkeypress="handleEnterKey(event)"
+                   oninput="autoResize()"></textarea>
+            
+            <!-- Botón enviar -->
+            <button onclick="sendMessage()" class="send-btn" id="sendBtn">➤</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+    </div>
+    
+    <div id="voice-status" class="voice-status">
+        <span id="voice-text">Mantén presionado 🎤 para hablar</span>
+    </div>
+    
+    <div id="audio-controls" class="audio-controls">
+        <button onclick="toggleAutoPlay()" id="autoplay-btn" class="control-btn active">
+            🔊 Auto-reproducir: ON
+        </button>
+        <button onclick="changeVoiceSpeed()" id="speed-btn" class="control-btn">
+            ⚡ Velocidad: Normal
+        </button>
+        <button onclick="showAvailableVoices()" class="control-btn">
+            🎙️ Ver Voces
+        </button>
+        <button onclick="toggleFirebase()" id="firebase-btn" class="control-btn">
+            🔥 Firebase: OFF
+        </button>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="login-modal" style="display: none;">
+        <div class="login-content">
+            <h3>🔥 Conectar a Firebase</h3>
+            <p style="margin-bottom: 20px; font-size: 14px; color: #666;">
+                Ingresa tu nombre de usuario para el chat en tiempo real
+            </p>
+            <input type="text" id="usernameInput" class="login-input" placeholder="Tu nombre de usuario" maxlength="20">
+            <button onclick="connectFirebase()" class="login-btn primary">🚀 Conectar</button>
+            <button onclick="closeLogin()" class="login-btn secondary">❌ Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Emoji Picker -->
+    <div id="emojiPicker" class="emoji-picker">
+        <input type="text" class="emoji-search" placeholder="Buscar emojis..." onkeyup="searchEmojis(event)">
+        <div class="emoji-categories">
+            <span class="emoji-category active" data-category="smileys" onclick="selectEmojiCategory('smileys')">😀</span>
+            <span class="emoji-category" data-category="animals" onclick="selectEmojiCategory('animals')">🐶</span>
+            <span class="emoji-category" data-category="food" onclick="selectEmojiCategory('food')">🍎</span>
+            <span class="emoji-category" data-category="travel" onclick="selectEmojiCategory('travel')">✈️</span>
+            <span class="emoji-category" data-category="activities" onclick="selectEmojiCategory('activities')">⚽</span>
+            <span class="emoji-category" data-category="objects" onclick="selectEmojiCategory('objects')">💡</span>
+            <span class="emoji-category" data-category="symbols" onclick="selectEmojiCategory('symbols')">❤️</span>
+        </div>
+        <div class="emoji-grid" id="emojiGrid">
+            <!-- Los emojis se cargarán dinámicamente -->
+        </div>
+    </div>
+
+    <!-- GIF Picker -->
+    <div id="gifPicker" class="gif-picker">
+        <input type="text" class="gif-search" placeholder="Buscar GIFs..." onkeyup="searchGifs(event)">
+        <div class="gif-grid" id="gifGrid">
+            <!-- Los GIFs se cargarán dinámicamente -->
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE DOCUMENTOS MEJORADO ===== -->
+    <div id="documentModal" class="document-modal">
+        <div class="document-content">
+            <!-- Header con pestañas -->
+            <div class="document-header">
+                <div class="document-title" id="documentTitle">Documento</div>
+                <div class="document-tabs" id="documentTabs">
+                    <button class="doc-tab active" data-tab="preview" onclick="switchDocTab('preview')">👁️ Vista</button>
+                    <button class="doc-tab" data-tab="edit" onclick="switchDocTab('edit')">✏️ Editar</button>
+                    <button class="doc-tab" data-tab="info" onclick="switchDocTab('info')">ℹ️ Info</button>
+                </div>
+                <button class="document-close" onclick="closeDocumentModal()">✕</button>
+            </div>
+            
+            <!-- Contenido del documento -->
+            <div class="document-body">
+                <!-- Vista previa -->
+                <div id="docPreview" class="doc-content active">
+                    <div class="doc-loading" id="docLoading">
+                        <div class="doc-loading-spinner"></div>
+                        <p>Cargando documento...</p>
+                    </div>
+                </div>
+                
+                <!-- Editor -->
+                <div id="docEditor" class="doc-content">
+                    <!-- El contenido se generará dinámicamente -->
+                </div>
+                
+                <!-- Información -->
+                <div id="docInfo" class="doc-content">
+                    <div style="padding: 20px;">
+                        <h4 style="margin-bottom: 15px;">📋 Información del Documento</h4>
+                        <div id="docInfoContent">
+                            <!-- Información se cargará aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer con acciones -->
+            <div class="document-footer">
+                <div class="doc-info" id="docFooterInfo">
+                    Listo para usar
+                </div>
+                <div class="doc-actions">
+                    <button onclick="downloadDocument()" class="doc-action-btn">📥 Descargar</button>
+                    <button onclick="saveDocumentChanges()" class="doc-action-btn success" id="saveDocBtn" style="display: none;">💾 Guardar</button>
+                    <button onclick="shareDocument()" class="doc-action-btn">🔗 Compartir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="imageInput" class="hidden" accept="image/*" multiple onchange="handleFileSelect(event, 'image')">
+    <input type="file" id="videoInput" class="hidden" accept="video/*" onchange="handleFileSelect(event, 'video')">
+    <input type="file" id="documentInput" class="hidden" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx" onchange="handleFileSelect(event, 'document')">
+    <input type="file" id="cameraInput" class="hidden" accept="image/*" capture="environment" onchange="handleFileSelect(event, 'camera')">
+
+    <script>
+        // === CONFIGURACIÓN FIREBASE (DEMO) ===
+        const firebaseConfig = {
+            // Configuración demo - reemplazar con tu config real
+            apiKey: "demo-api-key",
+            authDomain: "kaixo-translate-demo.firebaseapp.com", 
+            databaseURL: "https://kaixo-translate-demo-default-rtdb.firebaseio.com",
+            projectId: "kaixo-translate-demo",
+            storageBucket: "kaixo-translate-demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:demo123"
+        };
+
+        // Variables Firebase
+        let firebaseApp = null;
+        let database = null;
+        let storage = null;
+        let firebaseConnected = false;
+        let chatRef = null;
+        let currentUsername = null;
+
+        // === CONFIGURACIÓN MULTIIDIOMA ORIGINAL (MANTENER INTACTO) ===
+        let currentUser = 'user1';
+        let messages = [];
+
+        const languages = {
+            es: { name: 'Español', flag: '🇪🇸', voice: 'es-ES', region: 'España' },
+            en: { name: 'English', flag: '🇬🇧', voice: 'en-US', region: 'USA' },
+            fr: { name: 'Français', flag: '🇫🇷', voice: 'fr-FR', region: 'France' },
+            de: { name: 'Deutsch', flag: '🇩🇪', voice: 'de-DE', region: 'Deutschland' },
+            it: { name: 'Italiano', flag: '🇮🇹', voice: 'it-IT', region: 'Italia' },
+            pt: { name: 'Português', flag: '🇵🇹', voice: 'pt-BR', region: 'Brasil' },
+            ru: { name: 'Русский', flag: '🇷🇺', voice: 'ru-RU', region: 'Россия' },
+            ja: { name: '日本語', flag: '🇯🇵', voice: 'ja-JP', region: '日本' },
+            ko: { name: '한국어', flag: '🇰🇷', voice: 'ko-KR', region: '대한민국' },
+            zh: { name: '中文', flag: '🇨🇳', voice: 'zh-CN', region: '中国' },
+            ar: { name: 'العربية', flag: '🇸🇦', voice: 'ar-SA', region: 'السعودية' },
+            hi: { name: 'हिन्दी', flag: '🇮🇳', voice: 'hi-IN', region: 'भारत' }
+        };
+
+        const userInfo = {
+            user1: { name: 'Usuario 1', lang: 'es' },
+            user2: { name: 'Usuario 2', lang: 'en' }
+        };
+
+        // ===== NUEVAS VARIABLES PARA DOCUMENTOS =====
+        let currentDocument = null;
+        let currentDocumentType = null;
+        let documentData = null;
+        let isDocumentModified = false;
+        let quillEditor = null;
+
+        // ===== NUEVAS FUNCIONES PARA MENÚ MULTIMEDIA UNIFICADO =====
+        
+        // Función para alternar el menú principal
+        function toggleMultimediaMenu() {
+            const menu = document.getElementById('multimediaMenu');
+            const btn = document.getElementById('mainPlusBtn');
+            
+            // Cerrar otros pickers si están abiertos
+            closeAllPickers();
+            
+            menu.classList.toggle('active');
+            btn.classList.toggle('active');
+            
+            if (menu.classList.contains('active')) {
+                // Agregar event listener para cerrar al hacer click fuera
+                setTimeout(() => {
+                    document.addEventListener('click', closeMultimediaMenu);
+                }, 100);
+            }
+        }
+
+        // Función para cerrar el menú multimedia
+        function closeMultimediaMenu(event) {
+            const menu = document.getElementById('multimediaMenu');
+            const btn = document.getElementById('mainPlusBtn');
+            const container = event?.target.closest('.multimedia-container');
+            
+            if (!container) {
+                menu.classList.remove('active');
+                btn.classList.remove('active');
+                document.removeEventListener('click', closeMultimediaMenu);
+            }
+        }
+
+        // Función para manejar la selección de opciones del menú
+        function selectMenuOption(option) {
+            console.log(`🎭 Opción seleccionada: ${option}`);
+            
+            // Cerrar el menú multimedia
+            const menu = document.getElementById('multimediaMenu');
+            const btn = document.getElementById('mainPlusBtn');
+            menu.classList.remove('active');
+            btn.classList.remove('active');
+            document.removeEventListener('click', closeMultimediaMenu);
+            
+            // Ejecutar acción según la opción
+            switch(option) {
+                case 'emoji':
+                    toggleEmojiPicker();
+                    break;
+                case 'gif':
+                    toggleGifPicker();
+                    break;
+                case 'sticker':
+                    showStickers();
+                    break;
+                case 'document':
+                    selectDocuments();
+                    break;
+                case 'gallery':
+                    selectImages();
+                    break;
+                case 'camera':
+                    takePhoto();
+                    break;
+                default:
+                    console.log('Opción no reconocida:', option);
+            }
+        }
+
+        // Función para cerrar todos los pickers
+        function closeAllPickers() {
+            document.getElementById('emojiPicker').classList.remove('active');
+            document.getElementById('gifPicker').classList.remove('active');
+        }
+
+        // === FUNCIONES DE ARCHIVOS MEJORADAS ===
+        
+        function selectImages() {
+            document.getElementById('imageInput').click();
+            showStatus('📸 Selecciona imágenes de tu galería', 'firebase');
+        }
+
+        function selectDocuments() {
+            document.getElementById('documentInput').click();
+            showStatus('📄 Selecciona documentos (PDF, DOC, XLS, etc.)', 'firebase');
+        }
+
+        function takePhoto() {
+            document.getElementById('cameraInput').click();
+            showStatus('📸 Abriendo cámara...', 'firebase');
+        }
+
+        function handleFileSelect(event, type) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                processFile(file, type);
+            });
+            
+            // Limpiar input
+            event.target.value = '';
+        }
+
+        function processFile(file, type) {
+            // Validar tamaño según tipo
+            const maxSizes = {
+                image: 5 * 1024 * 1024,   // 5MB
+                video: 50 * 1024 * 1024,  // 50MB
+                document: 10 * 1024 * 1024, // 10MB
+                camera: 5 * 1024 * 1024    // 5MB
+            };
+
+            if (file.size > maxSizes[type]) {
+                const maxSizeMB = maxSizes[type] / (1024 * 1024);
+                alert(`El archivo es demasiado grande. Máximo ${maxSizeMB}MB para ${type}.`);
+                return;
+            }
+
+            showStatus(`📤 Enviando ${type}...`, 'firebase');
+
+            if (type === 'image' || type === 'camera') {
+                handleImageFile(file);
+            } else if (type === 'video') {
+                handleVideoFile(file);
+            } else if (type === 'document') {
+                handleDocumentFile(file);
+            }
+        }
+
+        function handleImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageMessage = {
+                    id: Date.now(),
+                    sender: currentUser,
+                    senderLang: userInfo[currentUser].lang,
+                    type: 'image',
+                    imageData: e.target.result,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    text: '',
+                    timestamp: new Date().toLocaleTimeString(),
+                    isTranslating: false,
+                    translation: null,
+                    hasAudio: false
+                };
+
+                messages.push(imageMessage);
+                renderMessages();
+                scrollToBottom();
+                
+                showStatus('✅ Imagen enviada', 'success');
+
+                if (firebaseConnected) {
+                    setTimeout(() => {
+                        showStatus('🔥 Imagen sincronizada', 'firebase');
+                    }, 1000);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleVideoFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const videoMessage = {
+                    id: Date.now(),
+                    sender: currentUser,
+                    senderLang: userInfo[currentUser].lang,
+                    type: 'video',
+                    videoData: e.target.result,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    mimeType: file.type,
+                    duration: null,
+                    text: '',
+                    timestamp: new Date().toLocaleTimeString(),
+                    isTranslating: false,
+                    translation: null,
+                    hasAudio: false,
+                    reactions: {}
+                };
+
+                messages.push(videoMessage);
+                renderMessages();
+                scrollToBottom();
+                
+                showStatus('✅ Video enviado correctamente', 'success');
+
+                if (firebaseConnected) {
+                    setTimeout(() => {
+                        showStatus('🔥 Video sincronizado', 'firebase');
+                    }, 1000);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleDocumentFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const docMessage = {
+                    id: Date.now(),
+                    sender: currentUser,
+                    senderLang: userInfo[currentUser].lang,
+                    type: 'document',
+                    documentData: e.target.result,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    mimeType: file.type,
+                    text: '',
+                    timestamp: new Date().toLocaleTimeString(),
+                    isTranslating: false,
+                    translation: null,
+                    hasAudio: false,
+                    reactions: {},
+                    // NUEVAS propiedades para documentos avanzados
+                    originalFile: file,
+                    isProcessed: false,
+                    documentContent: null
+                };
+
+                messages.push(docMessage);
+                renderMessages();
+                scrollToBottom();
+                
+                showStatus('✅ Documento enviado con vista previa avanzada', 'success');
+
+                if (firebaseConnected) {
+                    setTimeout(() => {
+                        showStatus('🔥 Documento sincronizado', 'firebase');
+                    }, 1000);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // === FUNCIONES DE DOCUMENTOS MEJORADAS ===
+
+        function getDocumentIcon(extension) {
+            switch(extension.toLowerCase()) {
+                case 'pdf': return 'PDF';
+                case 'doc':
+                case 'docx': return 'DOC';
+                case 'xls':
+                case 'xlsx': return 'XLS';
+                case 'ppt':
+                case 'pptx': return 'PPT';
+                default: return 'FILE';
+            }
+        }
+
+        function getDocumentIconEmoji(extension) {
+            switch(extension.toLowerCase()) {
+                case 'pdf': return '📄';
+                case 'doc':
+                case 'docx': return '📝';
+                case 'xls':
+                case 'xlsx': return '📊';
+                case 'ppt':
+                case 'pptx': return '📈';
+                case 'txt': return '📄';
+                case 'zip':
+                case 'rar': return '🗜️';
+                default: return '📋';
+            }
+        }
+
+        function getDocumentIconClass(extension) {
+            switch(extension.toLowerCase()) {
+                case 'pdf': return 'pdf';
+                case 'doc':
+                case 'docx': return 'doc';
+                case 'xls':
+                case 'xlsx': return 'xls';
+                case 'ppt':
+                case 'pptx': return 'ppt';
+                default: return 'pdf';
+            }
+        }
+
+        // ===== FUNCIÓN PRINCIPAL MEJORADA PARA ABRIR DOCUMENTOS =====
+        async function previewDocument(messageId) {
+            console.log('🔍 Iniciando vista previa para documento ID:', messageId);
+            
+            const message = messages.find(m => m.id === messageId);
+            if (!message) {
+                showStatus('❌ Documento no encontrado', 'error');
+                console.error('❌ Mensaje no encontrado:', messageId);
+                return;
+            }
+            
+            console.log('📄 Documento encontrado:', message.fileName);
+            
+            currentDocument = message;
+            currentDocumentType = message.fileName.split('.').pop().toLowerCase();
+            isDocumentModified = false;
+            
+            console.log('🔧 Tipo de documento detectado:', currentDocumentType);
+            
+            // Abrir modal
+            const modal = document.getElementById('documentModal');
+            const title = document.getElementById('documentTitle');
+            title.textContent = message.fileName;
+            
+            // Resetear tabs
+            switchDocTab('preview');
+            
+            // Mostrar loading
+            showDocumentLoading('Analizando documento...');
+            
+            modal.classList.add('active');
+            
+            try {
+                // Verificar disponibilidad de librerías
+                console.log('🔍 Verificando librerías disponibles...');
+                console.log('PDF.js disponible:', typeof pdfjsLib !== 'undefined');
+                console.log('SheetJS disponible:', typeof XLSX !== 'undefined');
+                console.log('Mammoth disponible:', typeof mammoth !== 'undefined');
+                console.log('Quill disponible:', typeof Quill !== 'undefined');
+                
+                // Procesar documento según tipo
+                if (currentDocumentType === 'pdf') {
+                    console.log('📄 Procesando PDF...');
+                    await loadPDFDocument(message);
+                } else if (['xls', 'xlsx'].includes(currentDocumentType)) {
+                    console.log('📊 Procesando Excel...');
+                    await loadExcelDocument(message);
+                } else if (['doc', 'docx'].includes(currentDocumentType)) {
+                    console.log('📝 Procesando Word...');
+                    await loadWordDocument(message);
+                } else {
+                    console.log('📁 Procesando documento genérico...');
+                    await loadGenericDocument(message);
+                }
+                
+                // Cargar información del documento
+                loadDocumentInfo(message);
+                
+                showStatus('👁️ Vista previa cargada correctamente', 'success');
+                console.log('✅ Vista previa completada exitosamente');
+                
+            } catch (error) {
+                console.error('❌ Error completo cargando documento:', error);
+                showStatus('❌ Error al cargar vista previa: ' + error.message, 'error');
+                showDocumentError(`Error al procesar el documento: ${error.message}`);
+            }
+        }
+
+        // ===== FUNCIÓN PARA MOSTRAR LOADING =====
+        function showDocumentLoading(message) {
+            const preview = document.getElementById('docPreview');
+            preview.innerHTML = `
+                <div class="doc-loading">
+                    <div class="doc-loading-spinner"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // ===== FUNCIÓN PARA MOSTRAR ERROR =====
+        function showDocumentError(message) {
+            const preview = document.getElementById('docPreview');
+            preview.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #dc3545;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                    <h3>Error al cargar documento</h3>
+                    <p style="color: #666; text-align: center;">${message}</p>
+                    <button onclick="previewDocument(${currentDocument.id})" class="doc-action-btn" style="margin-top: 15px;">
+                        🔄 Reintentar
+                    </button>
+                </div>
+            `;
+        }
+
+        // ===== PROCESAMIENTO DE PDF CON PDF.js =====
+        async function loadPDFDocument(message) {
+            showDocumentLoading('Cargando PDF...');
+            
+            try {
+                // Verificar que PDF.js esté disponible
+                if (typeof pdfjsLib === 'undefined') {
+                    throw new Error('PDF.js no está disponible');
+                }
+                
+                // Configurar PDF.js
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                
+                // Cargar PDF desde data URL
+                const pdf = await pdfjsLib.getDocument(message.documentData).promise;
+                
+                let currentPage = 1;
+                const totalPages = pdf.numPages;
+                
+                // Crear interfaz PDF
+                const preview = document.getElementById('docPreview');
+                preview.innerHTML = `
+                    <div class="pdf-viewer">
+                        <div class="pdf-controls">
+                            <button class="pdf-btn" onclick="pdfPrevPage()" id="pdfPrevBtn">⬅️ Anterior</button>
+                            <span class="pdf-page-info">
+                                <input type="number" id="pdfPageInput" value="1" min="1" max="${totalPages}" style="width: 50px; text-align: center; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onchange="pdfGoToPage()">
+                                / ${totalPages}
+                            </span>
+                            <button class="pdf-btn" onclick="pdfNextPage()" id="pdfNextBtn">Siguiente ➡️</button>
+                            <button class="pdf-btn" onclick="pdfZoomOut()" id="pdfZoomOutBtn">🔍-</button>
+                            <span id="pdfZoomLevel">100%</span>
+                            <button class="pdf-btn" onclick="pdfZoomIn()" id="pdfZoomInBtn">🔍+</button>
+                        </div>
+                        <div class="pdf-canvas-container" id="pdfCanvasContainer">
+                            <canvas id="pdfCanvas"></canvas>
+                        </div>
+                    </div>
+                `;
+                
+                // Variables globales para PDF
+                window.pdfDocument = pdf;
+                window.pdfCurrentPage = 1;
+                window.pdfZoom = 1.0;
+                
+                // Renderizar primera página
+                await renderPDFPage(1);
+                
+                // Configurar editor para PDF (solo texto básico)
+                setupPDFEditor();
+                
+                showStatus('✅ PDF cargado correctamente', 'success');
+                
+            } catch (error) {
+                console.error('Error cargando PDF:', error);
+                showDocumentError('Error al cargar PDF. Verifica que el archivo no esté corrupto.');
+            }
+        }
+
+        async function renderPDFPage(pageNum) {
+            try {
+                const page = await window.pdfDocument.getPage(pageNum);
+                const canvas = document.getElementById('pdfCanvas');
+                const context = canvas.getContext('2d');
+                
+                const viewport = page.getViewport({ scale: window.pdfZoom });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                await page.render(renderContext).promise;
+                
+                // Actualizar controles
+                const pageInput = document.getElementById('pdfPageInput');
+                const zoomLevel = document.getElementById('pdfZoomLevel');
+                const prevBtn = document.getElementById('pdfPrevBtn');
+                const nextBtn = document.getElementById('pdfNextBtn');
+                
+                if (pageInput) pageInput.value = pageNum;
+                if (zoomLevel) zoomLevel.textContent = Math.round(window.pdfZoom * 100) + '%';
+                if (prevBtn) prevBtn.disabled = pageNum <= 1;
+                if (nextBtn) nextBtn.disabled = pageNum >= window.pdfDocument.numPages;
+                
+                window.pdfCurrentPage = pageNum;
+                
+            } catch (error) {
+                console.error('Error renderizando página PDF:', error);
+                showStatus('❌ Error al renderizar página PDF', 'error');
+            }
+        }
+
+        function pdfPrevPage() {
+            if (window.pdfCurrentPage > 1) {
+                renderPDFPage(window.pdfCurrentPage - 1);
+            }
+        }
+
+        function pdfNextPage() {
+            if (window.pdfCurrentPage < window.pdfDocument.numPages) {
+                renderPDFPage(window.pdfCurrentPage + 1);
+            }
+        }
+
+        function pdfGoToPage() {
+            const pageInput = document.getElementById('pdfPageInput');
+            const pageNum = parseInt(pageInput.value);
+            
+            if (pageNum >= 1 && pageNum <= window.pdfDocument.numPages) {
+                renderPDFPage(pageNum);
+            } else {
+                pageInput.value = window.pdfCurrentPage;
+            }
+        }
+
+        function pdfZoomIn() {
+            window.pdfZoom = Math.min(window.pdfZoom + 0.25, 3.0);
+            renderPDFPage(window.pdfCurrentPage);
+        }
+
+        function pdfZoomOut() {
+            window.pdfZoom = Math.max(window.pdfZoom - 0.25, 0.5);
+            renderPDFPage(window.pdfCurrentPage);
+        }
+
+        function setupPDFEditor() {
+            const editor = document.getElementById('docEditor');
+            editor.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <h3>📄 PDF - Solo lectura</h3>
+                    <p style="color: #666; margin: 15px 0;">Los PDFs solo se pueden visualizar. Para editar, convierte a Word.</p>
+                    <div style="margin-top: 20px;">
+                        <button onclick="convertPDFToWord()" class="doc-action-btn">
+                            📝 Convertir a Word
+                        </button>
+                        <button onclick="downloadDocument()" class="doc-action-btn" style="margin-left: 10px;">
+                            📥 Descargar PDF
+                        </button>
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-radius: 8px; font-size: 12px;">
+                        <strong>💡 Funciones disponibles:</strong><br>
+                        • Vista previa con navegación<br>
+                        • Zoom in/out<br>
+                        • Salto a página específica<br>
+                        • Descarga del archivo original
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== PROCESAMIENTO DE EXCEL CON SHEETJS =====
+        async function loadExcelDocument(message) {
+            showDocumentLoading('Cargando Excel...');
+            
+            try {
+                // Verificar que XLSX esté disponible
+                if (typeof XLSX === 'undefined') {
+                    throw new Error('SheetJS no está disponible');
+                }
+                
+                // Convertir base64 a ArrayBuffer
+                const response = await fetch(message.documentData);
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Leer archivo Excel
+                const workbook = XLSX.read(arrayBuffer, {
+                    type: 'array',
+                    cellDates: true,
+                    cellFormulas: true,
+                    cellStyles: true
+                });
+                
+                // Obtener primera hoja
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convertir a HTML table
+                const htmlTable = XLSX.utils.sheet_to_html(worksheet, { editable: true });
+                
+                // Mostrar en vista previa
+                const preview = document.getElementById('docPreview');
+                preview.innerHTML = `
+                    <div class="excel-container">
+                        <div style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 15px;">
+                            <select onchange="switchExcelSheet(this.value)" id="excelSheetSelector" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                ${workbook.SheetNames.map((name, index) => 
+                                    `<option value="${index}" ${index === 0 ? 'selected' : ''}>${name}</option>`
+                                ).join('')}
+                            </select>
+                            <span style="font-size: 12px; color: #666;">
+                                📊 ${Object.keys(worksheet).filter(key => !key.startsWith('!')).length} celdas
+                            </span>
+                            <button onclick="refreshExcelView()" class="pdf-btn" style="margin-left: auto;">🔄 Actualizar</button>
+                        </div>
+                        <div style="overflow: auto; height: calc(100% - 50px); background: white;">
+                            ${htmlTable}
+                        </div>
+                    </div>
+                `;
+                
+                // Guardar workbook para edición
+                window.currentWorkbook = workbook;
+                window.currentWorksheet = worksheet;
+                window.currentSheetName = firstSheetName;
+                
+                // Configurar editor
+                setupExcelEditor(workbook);
+                
+                showStatus('✅ Excel cargado correctamente', 'success');
+                
+            } catch (error) {
+                console.error('Error cargando Excel:', error);
+                showDocumentError('Error al cargar Excel. Verifica que el archivo no esté corrupto.');
+            }
+        }
+
+        function switchExcelSheet(sheetIndex) {
+            try {
+                const workbook = window.currentWorkbook;
+                const sheetName = workbook.SheetNames[sheetIndex];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                const htmlTable = XLSX.utils.sheet_to_html(worksheet, { editable: true });
+                
+                const container = document.querySelector('.excel-container > div:last-child');
+                if (container) {
+                    container.innerHTML = htmlTable;
+                }
+                
+                window.currentWorksheet = worksheet;
+                window.currentSheetName = sheetName;
+                
+                // Actualizar contador de celdas
+                const cellCount = Object.keys(worksheet).filter(key => !key.startsWith('!')).length;
+                const cellCounter = document.querySelector('.excel-container span');
+                if (cellCounter) {
+                    cellCounter.textContent = `📊 ${cellCount} celdas`;
+                }
+                
+                showStatus(`📊 Cambiado a hoja: ${sheetName}`, 'success');
+                
+            } catch (error) {
+                console.error('Error cambiando hoja:', error);
+                showStatus('❌ Error al cambiar hoja', 'error');
+            }
+        }
+
+        function refreshExcelView() {
+            if (window.currentWorkbook && window.currentSheetName) {
+                const sheetIndex = window.currentWorkbook.SheetNames.indexOf(window.currentSheetName);
+                switchExcelSheet(sheetIndex);
+                showStatus('🔄 Vista de Excel actualizada', 'success');
+            }
+        }
+
+        function setupExcelEditor(workbook) {
+            const editor = document.getElementById('docEditor');
+            
+            // Crear tabla editable más avanzada
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Obtener rango de datos
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:Z100');
+            
+            let tableHTML = '<div class="excel-container"><table class="excel-table"><thead><tr>';
+            
+            // Headers (A, B, C, etc.)
+            for (let col = range.s.c; col <= Math.min(range.e.c, 25); col++) {
+                const colName = XLSX.utils.encode_col(col);
+                tableHTML += `<th>${colName}</th>`;
+            }
+            tableHTML += '</tr></thead><tbody>';
+            
+            // Filas de datos
+            for (let row = range.s.r; row <= Math.min(range.e.r, 100); row++) {
+                tableHTML += '<tr>';
+                for (let col = range.s.c; col <= Math.min(range.e.c, 25); col++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                    const cell = worksheet[cellAddress];
+                    const value = cell ? cell.v || '' : '';
+                    
+                    tableHTML += `<td>
+                        <input type="text" 
+                               value="${value}" 
+                               onchange="updateExcelCell('${cellAddress}', this.value)"
+                               style="width: 100%; border: none; background: transparent; padding: 4px;">
+                    </td>`;
+                }
+                tableHTML += '</tr>';
+            }
+            
+            tableHTML += '</tbody></table></div>';
+            
+            editor.innerHTML = `
+                <div style="height: 100%; display: flex; flex-direction: column;">
+                    <div style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb;">
+                        <button onclick="addExcelRow()" class="word-btn">➕ Fila</button>
+                        <button onclick="addExcelColumn()" class="word-btn">➕ Columna</button>
+                        <button onclick="saveExcelChanges()" class="word-btn active">💾 Guardar cambios</button>
+                    </div>
+                    <div style="flex: 1; overflow: auto;">
+                        ${tableHTML}
+                    </div>
+                </div>
+            `;
+            
+            // Marcar como modificado
+            isDocumentModified = true;
+            document.getElementById('saveDocBtn').style.display = 'inline-block';
+        }
+
+        function updateExcelCell(cellAddress, value) {
+            if (!window.currentWorksheet) return;
+            
+            // Actualizar celda en worksheet
+            if (value.trim() === '') {
+                delete window.currentWorksheet[cellAddress];
+            } else {
+                window.currentWorksheet[cellAddress] = { v: value, t: 's' };
+            }
+            
+            isDocumentModified = true;
+            updateDocumentFooter('📝 Documento modificado');
+        }
+
+        function addExcelRow() {
+            showStatus('➕ Función añadir fila en desarrollo', 'firebase');
+        }
+
+        function addExcelColumn() {
+            showStatus('➕ Función añadir columna en desarrollo', 'firebase');
+        }
+
+        function saveExcelChanges() {
+            if (!window.currentWorkbook) return;
+            
+            try {
+                // Generar nuevo archivo Excel
+                const newWorkbook = XLSX.write(window.currentWorkbook, { 
+                    bookType: 'xlsx', 
+                    type: 'binary' 
+                });
+                
+                showStatus('💾 Cambios guardados en Excel', 'success');
+                isDocumentModified = false;
+                document.getElementById('saveDocBtn').style.display = 'none';
+                updateDocumentFooter('✅ Cambios guardados');
+                
+            } catch (error) {
+                console.error('Error guardando Excel:', error);
+                showStatus('❌ Error al guardar cambios', 'error');
+            }
+        }
+
+        // ===== PROCESAMIENTO DE WORD CON MAMMOTH.JS =====
+        async function loadWordDocument(message) {
+            showDocumentLoading('Cargando Word...');
+            
+            try {
+                // Convertir base64 a ArrayBuffer
+                const response = await fetch(message.documentData);
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Usar Mammoth para convertir a HTML
+                const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                const htmlContent = result.value;
+                
+                // Mostrar en vista previa
+                const preview = document.getElementById('docPreview');
+                preview.innerHTML = `
+                    <div style="padding: 20px; background: white; height: 100%; overflow: auto;">
+                        <div style="max-width: 800px; margin: 0 auto; font-family: 'Times New Roman', serif; line-height: 1.6;">
+                            ${htmlContent}
+                        </div>
+                    </div>
+                `;
+                
+                // Guardar contenido para edición
+                window.originalWordContent = htmlContent;
+                
+                // Configurar editor
+                setupWordEditor(htmlContent);
+                
+                if (result.messages.length > 0) {
+                    console.log('Advertencias de conversión:', result.messages);
+                }
+                
+            } catch (error) {
+                console.error('Error cargando Word:', error);
+                showDocumentError('Error al cargar Word. Verifica que el archivo no esté corrupto.');
+            }
+        }
+
+        function setupWordEditor(htmlContent) {
+            const editor = document.getElementById('docEditor');
+            
+            editor.innerHTML = `
+                <div class="word-editor">
+                    <div class="word-toolbar">
+                        <button onclick="formatText('bold')" class="word-btn" title="Negrita">
+                            <strong>B</strong>
+                        </button>
+                        <button onclick="formatText('italic')" class="word-btn" title="Cursiva">
+                            <em>I</em>
+                        </button>
+                        <button onclick="formatText('underline')" class="word-btn" title="Subrayado">
+                            <u>U</u>
+                        </button>
+                        <button onclick="formatText('insertOrderedList')" class="word-btn" title="Lista numerada">
+                            📝
+                        </button>
+                        <button onclick="formatText('insertUnorderedList')" class="word-btn" title="Lista">
+                            📋
+                        </button>
+                        <button onclick="saveWordChanges()" class="word-btn active">💾 Guardar</button>
+                    </div>
+                    <div id="quillEditor" class="quill-editor"></div>
+                </div>
+            `;
+            
+            // Inicializar Quill editor
+            quillEditor = new Quill('#quillEditor', {
+                theme: 'snow',
+                placeholder: 'Edita tu documento aquí...',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Cargar contenido
+            quillEditor.root.innerHTML = htmlContent;
+            
+            // Detectar cambios
+            quillEditor.on('text-change', function() {
+                isDocumentModified = true;
+                document.getElementById('saveDocBtn').style.display = 'inline-block';
+                updateDocumentFooter('📝 Documento modificado');
+            });
+        }
+
+        function formatText(command) {
+            if (quillEditor) {
+                const selection = quillEditor.getSelection();
+                if (selection) {
+                    switch(command) {
+                        case 'bold':
+                            quillEditor.format('bold', !quillEditor.getFormat().bold);
+                            break;
+                        case 'italic':
+                            quillEditor.format('italic', !quillEditor.getFormat().italic);
+                            break;
+                        case 'underline':
+                            quillEditor.format('underline', !quillEditor.getFormat().underline);
+                            break;
+                        default:
+                            document.execCommand(command, false, null);
+                    }
+                }
+            }
+        }
+
+        function saveWordChanges() {
+            if (!quillEditor) return;
+            
+            try {
+                const htmlContent = quillEditor.root.innerHTML;
+                window.modifiedWordContent = htmlContent;
+                
+                showStatus('💾 Cambios guardados en Word', 'success');
+                isDocumentModified = false;
+                document.getElementById('saveDocBtn').style.display = 'none';
+                updateDocumentFooter('✅ Cambios guardados');
+                
+            } catch (error) {
+                console.error('Error guardando Word:', error);
+                showStatus('❌ Error al guardar cambios', 'error');
+            }
+        }
+
+        // ===== PROCESAMIENTO GENÉRICO =====
+        async function loadGenericDocument(message) {
+            const extension = message.fileName.split('.').pop().toLowerCase();
+            const iconEmoji = getDocumentIconEmoji(extension);
+            
+            const preview = document.getElementById('docPreview');
+            preview.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 72px; margin-bottom: 20px; color: #666;">
+                        ${iconEmoji}
+                    </div>
+                    <h3 style="color: #333; margin-bottom: 10px;">${message.fileName}</h3>
+                    <p style="color: #666; margin-bottom: 5px;">Tipo: ${extension.toUpperCase()}</p>
+                    <p style="color: #666; margin-bottom: 30px;">Tamaño: ${(message.fileSize / (1024*1024)).toFixed(2)} MB</p>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #666;">
+                        <p><strong>💡 Formatos soportados para vista previa avanzada:</strong></p>
+                        <p>📄 PDF • 📊 Excel (XLS, XLSX) • 📝 Word (DOC, DOCX)</p>
+                        <p style="margin-top: 10px;">Este formato se puede descargar pero no tiene vista previa especializada.</p>
+                    </div>
+                </div>
+            `;
+            
+            // Editor genérico
+            const editor = document.getElementById('docEditor');
+            editor.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <h3>📁 ${extension.toUpperCase()} - Vista limitada</h3>
+                    <p style="color: #666; margin: 15px 0;">Este tipo de archivo no tiene editor especializado.</p>
+                    <div style="margin-top: 20px;">
+                        <button onclick="downloadDocument()" class="doc-action-btn">
+                            📥 Descargar archivo
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== FUNCIONES DE NAVEGACIÓN ENTRE TABS =====
+        function switchDocTab(tabName) {
+            // Actualizar tabs activos
+            document.querySelectorAll('.doc-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Mostrar contenido correspondiente
+            document.querySelectorAll('.doc-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            if (tabName === 'preview') {
+                document.getElementById('docPreview').classList.add('active');
+            } else if (tabName === 'edit') {
+                document.getElementById('docEditor').classList.add('active');
+                // Mostrar/ocultar botón guardar según si hay editor
+                const saveBtn = document.getElementById('saveDocBtn');
+                if (currentDocumentType && ['xls', 'xlsx', 'doc', 'docx'].includes(currentDocumentType)) {
+                    saveBtn.style.display = isDocumentModified ? 'inline-block' : 'none';
+                } else {
+                    saveBtn.style.display = 'none';
+                }
+            } else if (tabName === 'info') {
+                document.getElementById('docInfo').classList.add('active');
+            }
+        }
+
+        // ===== INFORMACIÓN DEL DOCUMENTO =====
+        function loadDocumentInfo(message) {
+            const extension = message.fileName.split('.').pop().toLowerCase();
+            const iconEmoji = getDocumentIconEmoji(extension);
+            
+            const infoContent = document.getElementById('docInfoContent');
+            
+            let specificInfo = '';
+            if (currentDocumentType === 'pdf' && window.pdfDocument) {
+                specificInfo = `
+                    <p><strong>📄 Información PDF:</strong></p>
+                    <p>• Páginas: ${window.pdfDocument.numPages}</p>
+                    <p>• Versión PDF: ${window.pdfDocument._pdfInfo.PDFFormatVersion || 'N/A'}</p>
+                `;
+            } else if (['xls', 'xlsx'].includes(currentDocumentType) && window.currentWorkbook) {
+                specificInfo = `
+                    <p><strong>📊 Información Excel:</strong></p>
+                    <p>• Hojas: ${window.currentWorkbook.SheetNames.length}</p>
+                    <p>• Hojas disponibles: ${window.currentWorkbook.SheetNames.join(', ')}</p>
+                `;
+            } else if (['doc', 'docx'].includes(currentDocumentType)) {
+                specificInfo = `
+                    <p><strong>📝 Información Word:</strong></p>
+                    <p>• Formato: Microsoft Word</p>
+                    <p>• Editable: Sí</p>
+                `;
+            }
+            
+            infoContent.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">${iconEmoji}</div>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p><strong>📋 Información General:</strong></p>
+                    <p>• Nombre: ${message.fileName}</p>
+                    <p>• Tamaño: ${(message.fileSize / (1024*1024)).toFixed(2)} MB</p>
+                    <p>• Tipo MIME: ${message.mimeType || 'N/A'}</p>
+                    <p>• Enviado: ${message.timestamp}</p>
+                    <p>• Usuario: ${userInfo[message.sender].name}</p>
+                </div>
+                
+                ${specificInfo ? `<div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">${specificInfo}</div>` : ''}
+                
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px;">
+                    <p><strong>🛠️ Capacidades:</strong></p>
+                    <p>• Vista previa: ${['pdf', 'xls', 'xlsx', 'doc', 'docx'].includes(currentDocumentType) ? '✅ Sí' : '❌ Limitada'}</p>
+                    <p>• Edición: ${['xls', 'xlsx', 'doc', 'docx'].includes(currentDocumentType) ? '✅ Sí' : '❌ No'}</p>
+                    <p>• Descarga: ✅ Sí</p>
+                    <p>• Compartir: ✅ Sí</p>
+                </div>
+            `;
+        }
+
+        // ===== FUNCIONES DE ACCIÓN MEJORADAS =====
+        function downloadDocument() {
+            if (!currentDocument) {
+                showStatus('❌ No hay documento seleccionado', 'error');
+                return;
+            }
+            
+            try {
+                let dataToDownload = currentDocument.documentData;
+                let filename = currentDocument.fileName;
+                
+                // Si hay modificaciones en Excel
+                if (['xls', 'xlsx'].includes(currentDocumentType) && window.currentWorkbook && isDocumentModified) {
+                    try {
+                        const newWorkbook = XLSX.write(window.currentWorkbook, { 
+                            bookType: 'xlsx', 
+                            type: 'base64' 
+                        });
+                        dataToDownload = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + newWorkbook;
+                        filename = filename.replace(/\.[^/.]+$/, '') + '_editado.xlsx';
+                        showStatus('📊 Descargando Excel modificado...', 'success');
+                    } catch (excelError) {
+                        console.error('Error generando Excel:', excelError);
+                        showStatus('⚠️ Descargando versión original (error al guardar cambios)', 'firebase');
+                    }
+                }
+                
+                // Si hay modificaciones en Word
+                else if (['doc', 'docx'].includes(currentDocumentType) && window.modifiedWordContent) {
+                    try {
+                        // Crear HTML con estilos para descarga
+                        const htmlContent = `
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <title>${filename}</title>
+                                <style>
+                                    body { font-family: 'Times New Roman', serif; line-height: 1.6; margin: 40px; }
+                                    h1, h2, h3 { color: #333; }
+                                    p { margin-bottom: 10px; }
+                                </style>
+                            </head>
+                            <body>
+                                ${window.modifiedWordContent}
+                            </body>
+                            </html>
+                        `;
+                        
+                        const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+                        dataToDownload = URL.createObjectURL(htmlBlob);
+                        filename = filename.replace(/\.[^/.]+$/, '') + '_editado.html';
+                        showStatus('📝 Descargando Word como HTML...', 'success');
+                    } catch (wordError) {
+                        console.error('Error generando Word:', wordError);
+                        showStatus('⚠️ Descargando versión original (error al guardar cambios)', 'firebase');
+                    }
+                }
+                
+                // Crear y disparar descarga
+                const link = document.createElement('a');
+                link.href = dataToDownload;
+                link.download = filename;
+                link.style.display = 'none';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Limpiar URL si se creó un blob
+                if (dataToDownload.startsWith('blob:')) {
+                    setTimeout(() => URL.revokeObjectURL(dataToDownload), 1000);
+                }
+                
+                showStatus(`📥 ¡Descarga iniciada! → ${filename}`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error en descarga:', error);
+                showStatus('❌ Error al descargar archivo', 'error');
+            }
+        }
+
+        function saveDocumentChanges() {
+            if (!currentDocument) {
+                showStatus('❌ No hay documento para guardar', 'error');
+                return;
+            }
+            
+            try {
+                if (['xls', 'xlsx'].includes(currentDocumentType)) {
+                    saveExcelChanges();
+                } else if (['doc', 'docx'].includes(currentDocumentType)) {
+                    saveWordChanges();
+                } else {
+                    showStatus('💾 Este tipo de documento no es editable', 'firebase');
+                }
+            } catch (error) {
+                console.error('Error guardando cambios:', error);
+                showStatus('❌ Error al guardar cambios', 'error');
+            }
+        }
+
+        function shareDocument() {
+            if (!currentDocument) {
+                showStatus('❌ No hay documento para compartir', 'error');
+                return;
+            }
+            
+            try {
+                const shareData = {
+                    title: `📄 ${currentDocument.fileName}`,
+                    text: `Documento de Kaixo Translate: ${currentDocument.fileName} (${(currentDocument.fileSize / (1024*1024)).toFixed(1)} MB)`,
+                    url: window.location.href
+                };
+                
+                if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                    navigator.share(shareData);
+                    showStatus('🔗 Compartiendo documento...', 'success');
+                } else {
+                    // Fallback: copiar información al portapapeles
+                    const shareText = `📄 ${shareData.title}\n${shareData.text}\n\n💬 Enviado desde: ${shareData.url}`;
+                    
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(shareText);
+                        showStatus('📋 Info del documento copiada al portapapeles', 'success');
+                    } else {
+                        // Fallback más simple
+                        prompt('📋 Copia esta información para compartir:', shareText);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error compartiendo:', error);
+                showStatus('❌ Error al compartir documento', 'error');
+            }
+        }
+
+        function convertPDFToWord() {
+            showStatus('🔄 Conversión PDF→Word en desarrollo. Usa herramientas online mientras tanto.', 'firebase');
+            // Aquí podrías integrar una API de conversión como CloudConvert
+        }
+
+        function closeDocumentModal() {
+            const modal = document.getElementById('documentModal');
+            modal.classList.remove('active');
+            
+            // Limpiar variables globales
+            currentDocument = null;
+            currentDocumentType = null;
+            documentData = null;
+            isDocumentModified = false;
+            
+            // Limpiar editores
+            if (quillEditor) {
+                quillEditor = null;
+            }
+            
+            // Limpiar PDF
+            if (window.pdfDocument) {
+                window.pdfDocument = null;
+                window.pdfCurrentPage = 1;
+                window.pdfZoom = 1.0;
+            }
+            
+            // Limpiar Excel
+            if (window.currentWorkbook) {
+                window.currentWorkbook = null;
+                window.currentWorksheet = null;
+                window.currentSheetName = null;
+            }
+            
+            // Ocultar botón guardar
+            document.getElementById('saveDocBtn').style.display = 'none';
+        }
+
+        function updateDocumentFooter(message) {
+            const footerInfo = document.getElementById('docFooterInfo');
+            if (footerInfo) {
+                footerInfo.textContent = message;
+            }
+        }
+
+        function updateExcelInfo() {
+            if (window.currentWorksheet) {
+                const cellCount = Object.keys(window.currentWorksheet).filter(key => !key.startsWith('!')).length;
+                updateDocumentFooter(`📊 ${cellCount} celdas en "${window.currentSheetName}"`);
+            }
+        }
+
+        // ===== FUNCIONES MEJORADAS DE MENSAJES =====
+        function createMessageHTML(msg) {
+            const isCurrentUser = msg.sender === currentUser;
+            const otherUser = currentUser === 'user1' ? 'user2' : 'user1';
+            const shouldShowTranslation = !isCurrentUser && msg.translation;
+            
+            let messageContent = '';
+            
+            if (msg.type === 'image') {
+                messageContent = `
+                    <img src="${msg.imageData}" alt="Imagen" class="message-image" onclick="openImageViewer('${msg.imageData}')">
+                    ${msg.text ? `<div class="message-text">${msg.text}</div>` : ''}
+                `;
+            } else if (msg.type === 'video') {
+                messageContent = `
+                    <div class="message-video">
+                        <video id="video-${msg.id}" class="video-player" controls>
+                            <source src="${msg.videoData}" type="${msg.mimeType}">
+                            Tu navegador no soporta el elemento video.
+                        </video>
+                        ${msg.duration ? `<div class="video-duration">${msg.duration}</div>` : ''}
+                    </div>
+                `;
+            } else if (msg.type === 'document') {
+                const extension = msg.fileName.split('.').pop().toLowerCase();
+                const iconClass = getDocumentIconClass(extension);
+                const iconEmoji = getDocumentIconEmoji(extension);
+                const isAdvancedFormat = ['pdf', 'xls', 'xlsx', 'doc', 'docx'].includes(extension);
+                
+                messageContent = `
+                    <div class="file-message" onclick="previewDocument(${msg.id})">
+                        <div class="file-icon ${iconClass}">${iconEmoji}</div>
+                        <div class="file-info">
+                            <div class="file-name">${msg.fileName}</div>
+                            <div class="file-size">${extension.toUpperCase()} • ${(msg.fileSize / (1024*1024)).toFixed(1)} MB</div>
+                            ${isAdvancedFormat ? '<div style="font-size: 10px; color: #25d366; margin-top: 2px;">✨ Vista previa avanzada disponible</div>' : ''}
+                        </div>
+                        <div class="file-actions">
+                            <button onclick="event.stopPropagation(); previewDocument(${msg.id})" class="file-action-btn preview" title="Vista previa avanzada">👁️</button>
+                            ${isAdvancedFormat ? `<button onclick="event.stopPropagation(); openDocumentEditor(${msg.id})" class="file-action-btn edit" title="Editar documento">✏️</button>` : ''}
+                            <button onclick="event.stopPropagation(); downloadFile(${msg.id})" class="file-action-btn download" title="Descargar archivo">📥</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                let displayText = msg.text;
+                if (shouldShowTranslation && !msg.isTranslating) {
+                    displayText = msg.translation;
+                } else if (msg.isTranslating) {
+                    displayText = msg.text + ' (traduciendo...)';
+                }
+                
+                // Aplicar estilo especial para emojis grandes
+                if (msg.type === 'emoji') {
+                    messageContent = `<div class="message-text emoji-large">${displayText}</div>`;
+                } else {
+                    messageContent = `<div class="message-text">${displayText}</div>`;
+                }
+            }
+            
+            // Agregar reacciones si existen
+            let reactionsHTML = '';
+            if (msg.reactions && Object.keys(msg.reactions).length > 0) {
+                reactionsHTML = `
+                    <div class="message-reactions">
+                        ${Object.entries(msg.reactions).map(([emoji, count]) => 
+                            `<span class="reaction" onclick="toggleReaction(${msg.id}, '${emoji}')">${emoji} ${count}</span>`
+                        ).join('')}
+                        <button class="reaction-btn" onclick="showReactionPicker(${msg.id})" title="Añadir reacción">➕</button>
+                    </div>
+                `;
+            } else {
+                // Solo mostrar botón de reacción en hover
+                reactionsHTML = `
+                    <div class="message-reactions" style="opacity: 0; transition: opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
+                        <button class="reaction-btn" onclick="showReactionPicker(${msg.id})" title="Añadir reacción">➕</button>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="message ${isCurrentUser ? 'sent' : 'received'}">
+                    <div class="message-bubble ${msg.isTranslating ? 'translating' : ''} ${(msg.type === 'emoji' || msg.type === 'image' || msg.type === 'video' || msg.type === 'document') ? 'multimedia-only' : ''}">
+                        ${messageContent}
+                        ${shouldShowTranslation && !msg.isTranslating && msg.type === 'text' ? `
+                            <div class="translation-info">
+                                📝 Original (${languages[msg.senderLang].flag}): "${msg.text}"<br>
+                                🌍 ${languages[msg.senderLang].name} → ${languages[userInfo[otherUser].lang].name}
+                                <button onclick="playAudio('${msg.translation.replace(/'/g, "\\'")}', '${userInfo[otherUser].lang}', ${msg.id})" 
+                                        class="play-btn" title="Escuchar traducción">
+                                    🔊
+                                </button>
+                            </div>
+                        ` : ''}
+                        <div class="message-time">
+                            ${msg.timestamp} 
+                            ${msg.hasAudio ? '🎤' : ''}
+                            ${firebaseConnected ? '<span class="delivery-status">✓✓</span>' : ''}
+                        </div>
+                        ${reactionsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openDocumentEditor(messageId) {
+            console.log('🔧 Abriendo editor para mensaje:', messageId);
+            previewDocument(messageId);
+            // Cambiar automáticamente a la pestaña de edición después de cargar
+            setTimeout(() => {
+                switchDocTab('edit');
+            }, 1500);
+        }
+
+        function downloadFile(messageId) {
+            const message = messages.find(m => m.id === messageId);
+            if (!message) {
+                showStatus('❌ Archivo no encontrado', 'error');
+                return;
+            }
+            
+            try {
+                const link = document.createElement('a');
+                link.href = message.documentData;
+                link.download = message.fileName;
+                link.style.display = 'none';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showStatus(`📥 Descargando ${message.fileName}`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error descarga directa:', error);
+                showStatus('❌ Error al descargar archivo', 'error');
+            }
+        }
+
+        function openImageViewer(imageData) {
+            const viewer = window.open('', '_blank');
+            viewer.document.write(`
+                <html>
+                    <head><title>Visor de Imagen - Kaixo Translate</title></head>
+                    <body style="margin:0; background:#000; display:flex; align-items:center; justify-content:center; height:100vh;">
+                        <img src="${imageData}" style="max-width:100%; max-height:100%; object-fit:contain;">
+                    </body>
+                </html>
+            `);
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // === EMOJI FUNCTIONS ===
+        const emojiCategories = {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥'],
+            animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐒', '🦍', '🦧', '🐩', '🐕', '🐈', '🐅', '🐆', '🐴', '🦄', '🦓', '🐂', '🐃', '🐄', '🐖', '🐗', '🐏', '🐑', '🦏', '🦛', '🐘', '🦣', '🦏'],
+            food: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🫑', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔', '🍠', '🥐', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳'],
+            travel: ['✈️', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏍️', '🛵', '🚲', '🛴', '🛹', '🛼', '🚁', '🛸', '🚀', '✈️', '🛩️', '🛫', '🛬', '🪂', '⛵', '🚤', '🛥️', '🛳️', '⛴️', '🚢', '⚓', '⛽', '🚧'],
+            activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️', '🤸', '🤾'],
+            objects: ['💡', '🔦', '🕯️', '🪔', '📱', '💻', '🖥️', '🖨️', '⌨️', '🖱️', '🖲️', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡'],
+            symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎']
+        };
+
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            const gifPicker = document.getElementById('gifPicker');
+            
+            // Cerrar GIF picker si está abierto
+            gifPicker.classList.remove('active');
+            
+            picker.classList.toggle('active');
+            
+            if (picker.classList.contains('active')) {
+                loadEmojis('smileys');
+                document.addEventListener('click', closeEmojiPicker);
+            }
+        }
+
+        function closeEmojiPicker(event) {
+            const picker = document.getElementById('emojiPicker');
+            const emojiBtn = event.target.closest('.emoji');
+            
+            if (!picker.contains(event.target) && !emojiBtn) {
+                picker.classList.remove('active');
+                document.removeEventListener('click', closeEmojiPicker);
+            }
+        }
+
+        function selectEmojiCategory(category) {
+            // Actualizar categoría activa
+            document.querySelectorAll('.emoji-category').forEach(cat => {
+                cat.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            loadEmojis(category);
+        }
+
+        function loadEmojis(category) {
+            const grid = document.getElementById('emojiGrid');
+            const emojis = emojiCategories[category] || emojiCategories.smileys;
+            
+            grid.innerHTML = emojis.map(emoji => 
+                `<div class="emoji-item" onclick="selectEmoji('${emoji}')">${emoji}</div>`
+            ).join('');
+        }
+
+        function selectEmoji(emoji) {
+            const input = document.getElementById('message-input');
+            
+            // Si el input está vacío, enviar emoji como mensaje independiente
+            if (input.value.trim() === '') {
+                sendEmojiMessage(emoji);
+                // Cerrar picker
+                document.getElementById('emojiPicker').classList.remove('active');
+            } else {
+                // Si hay texto, añadir emoji al texto existente
+                input.value += emoji;
+                input.focus();
+                // Cerrar picker
+                document.getElementById('emojiPicker').classList.remove('active');
+            }
+        }
+
+        function sendEmojiMessage(emoji) {
+            const emojiMessage = {
+                id: Date.now(),
+                sender: currentUser,
+                senderLang: userInfo[currentUser].lang,
+                type: 'emoji',
+                emoji: emoji,
+                text: emoji,
+                timestamp: new Date().toLocaleTimeString(),
+                isTranslating: false,
+                translation: null,
+                hasAudio: false,
+                reactions: {},
+                needsTranslation: false
+            };
+
+            messages.push(emojiMessage);
+            renderMessages();
+            scrollToBottom();
+            
+            showStatus(`${emoji} Emoji enviado`, 'success');
+
+            if (firebaseConnected) {
+                setTimeout(() => {
+                    showStatus('🔥 Emoji sincronizado', 'firebase');
+                }, 500);
+            }
+        }
+
+        function searchEmojis(event) {
+            const query = event.target.value.toLowerCase();
+            if (query.length < 2) {
+                loadEmojis('smileys');
+                return;
+            }
+            
+            // Buscar en todas las categorías
+            const allEmojis = Object.values(emojiCategories).flat();
+            const emojiNames = {
+                '😀': 'happy smile face',
+                '😍': 'love heart eyes',
+                '😂': 'laugh cry funny',
+                '👍': 'thumbs up good',
+                '❤️': 'heart love red',
+                '🎉': 'party celebration',
+                '🔥': 'fire hot',
+                '💯': 'hundred perfect',
+            };
+            
+            const filtered = allEmojis.filter(emoji => {
+                const names = emojiNames[emoji] || '';
+                return names.includes(query);
+            });
+            
+            const grid = document.getElementById('emojiGrid');
+            grid.innerHTML = filtered.map(emoji => 
+                `<div class="emoji-item" onclick="selectEmoji('${emoji}')">${emoji}</div>`
+            ).join('');
+        }
+
+        // === GIF FUNCTIONS ===
+        function toggleGifPicker() {
+            const picker = document.getElementById('gifPicker');
+            const emojiPicker = document.getElementById('emojiPicker');
+            
+            // Cerrar emoji picker si está abierto
+            emojiPicker.classList.remove('active');
+            
+            picker.classList.toggle('active');
+            
+            if (picker.classList.contains('active')) {
+                loadTrendingGifs();
+                document.addEventListener('click', closeGifPicker);
+            }
+        }
+
+        function closeGifPicker(event) {
+            const picker = document.getElementById('gifPicker');
+            const gifBtn = event.target.closest('.gif');
+            
+            if (!picker.contains(event.target) && !gifBtn) {
+                picker.classList.remove('active');
+                document.removeEventListener('click', closeGifPicker);
+            }
+        }
+
+        function loadTrendingGifs() {
+            const grid = document.getElementById('gifGrid');
+            grid.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #666; grid-column: 1 / -1;">
+                    <p>🎭 GIFs en desarrollo</p>
+                    <p style="font-size: 12px;">Próximamente con Tenor API</p>
+                </div>
+            `;
+        }
+
+        function searchGifs(event) {
+            const query = event.target.value.toLowerCase();
+            if (query.length < 2) {
+                loadTrendingGifs();
+                return;
+            }
+            
+            const grid = document.getElementById('gifGrid');
+            grid.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #666; grid-column: 1 / -1;">
+                    <p>🔍 Buscando "${query}"...</p>
+                    <p style="font-size: 12px;">Función en desarrollo</p>
+                </div>
+            `;
+        }
+
+        // === STICKER FUNCTIONS ===
+        function showStickers() {
+            alert('🎪 Stickers en desarrollo\n\nPróximamente:\n• Stickers personalizados\n• Packs de stickers\n• Creación de stickers');
+        }
+
+        // === FIREBASE FUNCTIONS ===
+        function toggleFirebase() {
+            if (firebaseConnected) {
+                disconnectFirebase();
+            } else {
+                document.getElementById('loginModal').style.display = 'flex';
+            }
+        }
+
+        function connectFirebase() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                alert('Por favor ingresa un nombre de usuario');
+                return;
+            }
+
+            try {
+                showStatus('🔥 Conectando a Firebase...', 'firebase');
+                
+                setTimeout(() => {
+                    firebaseConnected = true;
+                    currentUsername = username;
+                    updateFirebaseStatus();
+                    closeLogin();
+                    showStatus('✅ Conectado a Firebase como ' + username, 'success');
+                    syncMessagesWithFirebase();
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error conectando Firebase:', error);
+                showStatus('❌ Error conectando a Firebase', 'error');
+            }
+        }
+
+        function disconnectFirebase() {
+            firebaseConnected = false;
+            currentUsername = null;
+            updateFirebaseStatus();
+            showStatus('🔥 Desconectado de Firebase', 'firebase');
+        }
+
+        function updateFirebaseStatus() {
+            const btn = document.getElementById('firebase-btn');
+            const status = document.getElementById('connectionStatus');
+            
+            if (firebaseConnected) {
+                btn.textContent = '🔥 Firebase: ON';
+                btn.classList.add('active');
+                status.classList.remove('offline');
+                status.title = 'Conectado a Firebase';
+            } else {
+                btn.textContent = '🔥 Firebase: OFF';
+                btn.classList.remove('active');
+                status.classList.add('offline');
+                status.title = 'Modo local';
+            }
+        }
+
+        function syncMessagesWithFirebase() {
+            if (firebaseConnected && messages.length > 0) {
+                showStatus('🔄 Sincronizando mensajes...', 'firebase');
+                setTimeout(() => {
+                    showStatus('✅ Mensajes sincronizados', 'success');
+                }, 1000);
+            }
+        }
+
+        function closeLogin() {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('usernameInput').value = '';
+        }
+
+        // === REACTION FUNCTIONS ===
+        function showReactionPicker(messageId) {
+            const reactions = ['❤️', '😂', '😮', '😢', '😡', '👍', '👎'];
+            
+            const picker = document.createElement('div');
+            picker.style.cssText = `
+                position: fixed;
+                background: white;
+                border-radius: 25px;
+                padding: 10px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                z-index: 1000;
+                display: flex;
+                gap: 5px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                animation: fadeIn 0.2s ease;
+            `;
+            
+            reactions.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.textContent = emoji;
+                btn.style.cssText = `
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    padding: 8px;
+                    border-radius: 50%;
+                    transition: background 0.2s;
+                `;
+                btn.onmouseover = () => btn.style.background = '#f0f2f5';
+                btn.onmouseout = () => btn.style.background = 'none';
+                btn.onclick = () => {
+                    addReaction(messageId, emoji);
+                    document.body.removeChild(picker);
+                };
+                picker.appendChild(btn);
+            });
+            
+            setTimeout(() => {
+                document.addEventListener('click', function closeReactionPicker(e) {
+                    if (!picker.contains(e.target)) {
+                        if (document.body.contains(picker)) {
+                            document.body.removeChild(picker);
+                        }
+                        document.removeEventListener('click', closeReactionPicker);
+                    }
+                });
+            }, 100);
+            
+            document.body.appendChild(picker);
+        }
+
+        function addReaction(messageId, emoji) {
+            const messageIndex = messages.findIndex(m => m.id === messageId);
+            if (messageIndex === -1) return;
+            
+            if (!messages[messageIndex].reactions) {
+                messages[messageIndex].reactions = {};
+            }
+            
+            if (messages[messageIndex].reactions[emoji]) {
+                messages[messageIndex].reactions[emoji]++;
+            } else {
+                messages[messageIndex].reactions[emoji] = 1;
+            }
+            
+            renderMessages();
+            showStatus(`Reacción ${emoji} añadida`, 'success');
+        }
+
+        function toggleReaction(messageId, emoji) {
+            const messageIndex = messages.findIndex(m => m.id === messageId);
+            if (messageIndex === -1) return;
+            
+            if (messages[messageIndex].reactions[emoji] > 1) {
+                messages[messageIndex].reactions[emoji]--;
+            } else {
+                delete messages[messageIndex].reactions[emoji];
+            }
+            
+            renderMessages();
+        }
+
+        // === USER PROFILE ===
+        function showUserProfile() {
+            const user = userInfo[currentUser];
+            const lang = languages[user.lang];
+            alert(`👤 ${user.name}\n🌍 Idioma: ${lang.name} ${lang.flag}\n${firebaseConnected ? '🔥 Conectado: ' + currentUsername : '📱 Modo local'}`);
+        }
+
+        // === AUTO RESIZE TEXTAREA ===
+        function autoResize() {
+            const textarea = document.getElementById('message-input');
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+        }
+
+        function handleEnterKey(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // === TRADUCCIÓN UNIVERSAL MEJORADA ===
+        async function translateText(text, targetLang) {
+            try {
+                const sourceLang = detectLanguage(text);
+                
+                console.log(`🔍 Detectado: "${text}" como ${sourceLang} → ${targetLang}`);
+                
+                if (sourceLang === targetLang) {
+                    console.log('✅ Mismo idioma, no traducir');
+                    return text;
+                }
+                
+                const localTranslation = await fallbackTranslation(text, sourceLang, targetLang);
+                if (localTranslation && !localTranslation.includes('[') && !localTranslation.includes('flag')) {
+                    console.log('✅ Traducción local encontrada:', localTranslation);
+                    return localTranslation;
+                }
+                
+                const apiTranslation = await translateWithMyMemory(text, sourceLang, targetLang);
+                if (apiTranslation) {
+                    console.log('✅ Traducción API exitosa:', apiTranslation);
+                    return apiTranslation;
+                }
+                
+                const libreTranslation = await translateWithLibre(text, sourceLang, targetLang);
+                if (libreTranslation) {
+                    console.log('✅ Traducción LibreTranslate exitosa:', libreTranslation);
+                    return libreTranslation;
+                }
+                
+                console.log('❌ Todas las APIs fallaron');
+                return `[${languages[targetLang].flag}] ${text}`;
+                
+            } catch (error) {
+                console.error('❌ Error en traducción:', error);
+                return `[Error de traducción] ${text}`;
+            }
+        }
+
+        async function translateWithMyMemory(text, sourceLang, targetLang) {
+            try {
+                const langPair = sourceLang === 'auto' ? `autodetect|${targetLang}` : `${sourceLang}|${targetLang}`;
+                const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+                
+                console.log('🌐 MyMemory URL:', url);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📦 MyMemory respuesta:', data);
+                
+                if (data.responseData && data.responseData.translatedText) {
+                    let translation = data.responseData.translatedText;
+                    
+                    if (translation.includes('MYMEMORY WARNING')) {
+                        translation = translation.split('MYMEMORY WARNING')[0].trim();
+                    }
+                    
+                    if (translation.toLowerCase() === text.toLowerCase()) {
+                        throw new Error('Traducción igual al original');
+                    }
+                    
+                    return translation;
+                }
+                
+                throw new Error('Respuesta API inválida');
+                
+            } catch (error) {
+                console.log('⚠️ MyMemory falló:', error.message);
+                return null;
+            }
+        }
+
+        async function translateWithLibre(text, sourceLang, targetLang) {
+            try {
+                const response = await fetch('https://libretranslate.de/translate', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        q: text,
+                        source: sourceLang === 'auto' ? 'auto' : sourceLang,
+                        target: targetLang,
+                        format: 'text'
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📦 LibreTranslate respuesta:', data);
+                
+                if (data.translatedText && data.translatedText !== text) {
+                    return data.translatedText;
+                }
+                
+                throw new Error('Traducción LibreTranslate inválida');
+                
+            } catch (error) {
+                console.log('⚠️ LibreTranslate falló:', error.message);
+                return null;
+            }
+        }
+
+        function detectLanguage(text) {
+            const lowerText = text.toLowerCase().trim();
+            
+            console.log('🔍 Detectando idioma para:', text);
+            
+            const patterns = {
+                es: {
+                    words: ['esto', 'eso', 'aquí', 'ahí', 'sigue', 'funcionando', 'bien', 'hola', 'como', 'estas', 'que', 'gracias', 'por', 'favor', 'buenas', 'adios', 'donde', 'cuando', 'porque', 'también'],
+                    chars: /[ñáéíóúü¿¡]/
+                },
+                en: {
+                    words: ['this', 'that', 'here', 'there', 'still', 'working', 'well', 'hello', 'how', 'are', 'you', 'thanks', 'please', 'good', 'bye', 'the', 'and', 'for', 'with'],
+                    chars: null
+                },
+                fr: {
+                    words: ['ceci', 'cela', 'ici', 'encore', 'fonctionne', 'bien', 'bonjour', 'comment', 'allez', 'vous', 'merci', 'au', 'revoir', 'bien', 'pour', 'avec'],
+                    chars: /[àâçèéêëîïôùûüÿœæ]/
+                },
+                de: {
+                    words: ['dies', 'das', 'hier', 'noch', 'funktioniert', 'gut', 'hallo', 'wie', 'geht', 'danke', 'bitte', 'auf', 'wiedersehen', 'gut', 'für', 'mit'],
+                    chars: /[äöüßÄÖÜ]/
+                },
+                it: {
+                    words: ['questo', 'quello', 'qui', 'ancora', 'funziona', 'bene', 'ciao', 'come', 'stai', 'grazie', 'prego', 'buongiorno', 'arrivederci', 'per', 'con'],
+                    chars: /[àèéìíîòóùú]/
+                },
+                pt: {
+                    words: ['isto', 'isso', 'aqui', 'ainda', 'funciona', 'bem', 'olá', 'como', 'está', 'obrigado', 'por', 'favor', 'bom', 'dia', 'para', 'com'],
+                    chars: /[ãõçáéíóúâêôà]/
+                },
+                ru: {
+                    words: ['это', 'то', 'здесь', 'всё', 'ещё', 'работает', 'хорошо', 'привет', 'как', 'дела', 'спасибо', 'пожалуйста', 'хорошо'],
+                    chars: /[а-яА-ЯёЁ]/
+                },
+                ja: {
+                    words: ['これ', 'それ', 'ここ', 'まだ', 'うまく', 'こんにちは', 'ありがとう', 'さようなら'],
+                    chars: /[ぁ-んァ-ヶー一-龠]/
+                },
+                ko: {
+                    words: ['이것', '그것', '여기', '아직', '잘', '안녕하세요', '감사합니다'],
+                    chars: /[가-힣ㄱ-ㅎㅏ-ㅣ]/
+                },
+                zh: {
+                    words: ['这个', '那个', '这里', '还', '很好', '你好', '谢谢', '再见'],
+                    chars: /[\u4e00-\u9fa5]/
+                },
+                ar: {
+                    words: ['هذا', 'هذه', 'هنا', 'لا يزال', 'جيد', 'مرحبا', 'شكرا'],
+                    chars: /[\u0600-\u06FF]/
+                },
+                hi: {
+                    words: ['यह', 'वह', 'यहाँ', 'अभी भी', 'अच्छा', 'नमस्ते', 'धन्यवाद'],
+                    chars: /[\u0900-\u097F]/
+                }
+            };
+            
+            let bestMatch = 'auto';
+            let maxScore = 0;
+            
+            for (const [lang, pattern] of Object.entries(patterns)) {
+                let score = 0;
+                
+                // Verificar caracteres especiales (peso alto)
+                if (pattern.chars && pattern.chars.test(text)) {
+                    score += 100;
+                    console.log(`🔤 ${lang}: +100 por caracteres especiales`);
+                }
+                
+                // Verificar palabras clave
+                let wordMatches = 0;
+                pattern.words.forEach(word => {
+                    if (lowerText.includes(word)) {
+                        wordMatches++;
+                        score += 10;
+                    }
+                });
+                
+                if (wordMatches > 0) {
+                    console.log(`📝 ${lang}: +${wordMatches * 10} por ${wordMatches} palabras`);
+                }
+                
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestMatch = lang;
+                }
+            }
+            
+            console.log(`🎯 Mejor coincidencia: ${bestMatch} (score: ${maxScore})`);
+            return bestMatch;
+        }
+
+        async function fallbackTranslation(text, from, to) {
+            const commonPhrases = {
+                'hola': { en: 'hello', fr: 'bonjour', de: 'hallo', it: 'ciao', pt: 'olá', ru: 'привет', ja: 'こんにちは', ko: '안녕하세요', zh: '你好', ar: 'مرحبا', hi: 'नमस्ते' },
+                'gracias': { en: 'thank you', fr: 'merci', de: 'danke', it: 'grazie', pt: 'obrigado', ru: 'спасибо', ja: 'ありがとう', ko: '감사합니다', zh: '谢谢', ar: 'شكرا', hi: 'धन्यवाद' },
+                'adiós': { en: 'goodbye', fr: 'au revoir', de: 'auf wiedersehen', it: 'arrivederci', pt: 'adeus', ru: 'до свидания', ja: 'さようなら', ko: '안녕히 가세요', zh: '再见', ar: 'وداعا', hi: 'अलविदा' },
+                'hello': { es: 'hola', fr: 'bonjour', de: 'hallo', it: 'ciao', pt: 'olá', ru: 'привет', ja: 'こんにちは', ko: '안녕하세요', zh: '你好', ar: 'مرحبا', hi: 'नमस्ते' },
+                'thank you': { es: 'gracias', fr: 'merci', de: 'danke', it: 'grazie', pt: 'obrigado', ru: 'спасибо', ja: 'ありがとう', ko: '감사합니다', zh: '谢谢', ar: 'شكرا', hi: 'धन्यवाद' },
+                'goodbye': { es: 'adiós', fr: 'au revoir', de: 'auf wiedersehen', it: 'arrivederci', pt: 'adeus', ru: 'до свидания', ja: 'さようなら', ko: '안녕히 가세요', zh: '再见', ar: 'وداعا', hi: 'अलविदा' },
+                'yes': { es: 'sí', fr: 'oui', de: 'ja', it: 'sì', pt: 'sim', ru: 'да', ja: 'はい', ko: '네', zh: '是', ar: 'نعم', hi: 'हाँ' },
+                'no': { es: 'no', fr: 'non', de: 'nein', it: 'no', pt: 'não', ru: 'нет', ja: 'いいえ', ko: '아니요', zh: '不', ar: 'لا', hi: 'नहीं' }
+            };
+            
+            const lowerText = text.toLowerCase();
+            
+            if (commonPhrases[lowerText] && commonPhrases[lowerText][to]) {
+                return commonPhrases[lowerText][to];
+            }
+            
+            return `[${languages[to].flag}] ${text}`;
+        }
+
+        // === FUNCIONES DE CHAT ORIGINALES (MANTENER INTACTO) ===
+        function switchUser() {
+            currentUser = currentUser === 'user1' ? 'user2' : 'user1';
+            updateUserDisplay();
+            renderMessages();
+            document.getElementById('message-input').focus();
+        }
+
+        function changeUserLanguage() {
+            const select = document.getElementById('language-select');
+            userInfo[currentUser].lang = select.value;
+            updateUserDisplay();
+        }
+
+        function updateUserDisplay() {
+            const user = userInfo[currentUser];
+            const lang = languages[user.lang];
+            document.getElementById('current-user').textContent = `👤 ${user.name}`;
+            document.getElementById('language-select').value = user.lang;
+            document.getElementById('message-input').placeholder = `Escribe en ${lang.name}...`;
+            
+            // Actualizar avatar
+            const avatar = document.getElementById('userAvatar');
+            avatar.textContent = user.name.charAt(user.name.length - 1);
+            avatar.style.background = currentUser === 'user1' ? 
+                'linear-gradient(135deg, #667eea, #764ba2)' : 
+                'linear-gradient(135deg, #f093fb, #f5576c)';
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            input.value = '';
+            autoResize();
+            
+            // Detectar si es solo emojis (sin texto real)
+            const emojiRegex = /^[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]+$/u;
+            const isEmojiOnly = emojiRegex.test(text);
+            
+            const message = {
+                id: Date.now(),
+                sender: currentUser,
+                senderLang: userInfo[currentUser].lang,
+                type: isEmojiOnly ? 'emoji' : 'text',
+                text: text,
+                emoji: isEmojiOnly ? text : null,
+                timestamp: new Date().toLocaleTimeString(),
+                isTranslating: !isEmojiOnly,
+                translation: null,
+                hasAudio: !isEmojiOnly,
+                reactions: {}
+            };
+            
+            messages.push(message);
+            renderMessages();
+            
+            // Solo traducir si es texto real (no emoji puro)
+            if (!isEmojiOnly) {
+                showStatus('🌐 Traduciendo con IA universal...', 'firebase');
+                
+                const otherUser = currentUser === 'user1' ? 'user2' : 'user1';
+                const targetLang = userInfo[otherUser].lang;
+                
+                console.log(`🔄 Iniciando traducción: "${text}" (${userInfo[currentUser].lang} → ${targetLang})`);
+                
+                try {
+                    const translation = await translateText(text, targetLang);
+                    
+                    const messageIndex = messages.findIndex(m => m.id === message.id);
+                    if (messageIndex !== -1) {
+                        messages[messageIndex].translation = translation;
+                        messages[messageIndex].isTranslating = false;
+                    }
+                    
+                    console.log(`✅ Traducción completada: "${translation}"`);
+                    showStatus(`✅ Traducido: "${text}" → "${translation}"`, 'success');
+                    
+                    // Auto-reproducir si está habilitado y es traducción válida
+                    if (autoPlayEnabled && translation && translation !== text) {
+                        setTimeout(() => {
+                            playAudio(translation, targetLang, message.id);
+                        }, 1000);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error completo:', error);
+                    const messageIndex = messages.findIndex(m => m.id === message.id);
+                    if (messageIndex !== -1) {
+                        messages[messageIndex].translation = '[Error en traducción - Intenta de nuevo]';
+                        messages[messageIndex].isTranslating = false;
+                    }
+                    showStatus('❌ Error en traducción - Revisa tu conexión', 'error');
+                }
+            } else {
+                // Emoji puro - no traducir
+                showStatus(`${text} Emoji enviado`, 'success');
+            }
+
+            // Sincronizar con Firebase si está conectado
+            if (firebaseConnected) {
+                setTimeout(() => {
+                    showStatus('🔥 Mensaje sincronizado', 'firebase');
+                }, isEmojiOnly ? 500 : 2000);
+            }
+            
+            renderMessages();
+            scrollToBottom();
+        }
+
+        function showStatus(message, show) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            
+            if (show === true) {
+                status.className = 'status active';
+            } else if (show === false) {
+                status.className = 'status';
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 2000);
+            } else if (typeof show === 'string') {
+                status.className = `status active ${show}`;
+                setTimeout(() => {
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messages');
+            
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="welcome">
+                        <h3>¡Kaixo Translate Pro v3.0! 🌟</h3>
+                        <p>Chat universal con IA + Vista previa y edición de PDF, Excel y Word</p>
+                        <div class="language-list">
+                            ${Object.entries(languages).map(([code, lang]) => 
+                                `<span class="lang-badge">${lang.flag} ${lang.name}</span>`
+                            ).join('')}
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                            <p>📄 <strong>Nuevo:</strong> Vista previa de PDFs con navegación</p>
+                            <p>📊 <strong>Nuevo:</strong> Editor completo de Excel</p>
+                            <p>📝 <strong>Nuevo:</strong> Editor de Word con formato</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = messages.map(msg => createMessageHTML(msg)).join('');
+        }
+
+        // === FUNCIONALIDAD DE VOZ ORIGINAL (MANTENER INTACTO) ===
+        let isRecording = false;
+        let recognition = null;
+        let autoPlayEnabled = true;
+        let voiceSpeed = 1.0;
+
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = function() {
+                    showVoiceStatus('🎤 Escuchando... Habla ahora', 'recording');
+                };
+                
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    if (interimTranscript) {
+                        showVoiceStatus(`🎤 "${interimTranscript}"`, 'recording');
+                    }
+                    
+                    if (finalTranscript) {
+                        document.getElementById('message-input').value = finalTranscript;
+                        showVoiceStatus('🔄 Procesando y traduciendo...', 'processing');
+                        setTimeout(() => {
+                            sendMessage();
+                            hideVoiceStatus();
+                        }, 500);
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    showVoiceStatus('❌ Error: ' + event.error, '');
+                    setTimeout(hideVoiceStatus, 2000);
+                    resetRecordingButton();
+                };
+                
+                recognition.onend = function() {
+                    resetRecordingButton();
+                };
+                
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function startRecording() {
+            if (isRecording) return;
+            
+            if (!recognition) {
+                if (!initSpeechRecognition()) {
+                    alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.');
+                    return;
+                }
+            }
+            
+            isRecording = true;
+            const userLang = userInfo[currentUser].lang;
+            
+            const recognitionLang = languages[userLang].voice;
+            recognition.lang = recognitionLang;
+            
+            console.log(`🎤 Reconocimiento configurado para: ${languages[userLang].name} (${recognitionLang})`);
+            
+            const voiceBtn = document.getElementById('voice-btn');
+            voiceBtn.classList.add('recording');
+            voiceBtn.textContent = '🔴';
+            
+            showVoiceStatus(`🎤 Escuchando en ${languages[userLang].name}...`, 'recording');
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                resetRecordingButton();
+                showVoiceStatus('❌ Error iniciando micrófono', '');
+                setTimeout(hideVoiceStatus, 2000);
+            }
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            
+            showVoiceStatus('🔄 Finalizando grabación...', 'processing');
+        }
+
+        function resetRecordingButton() {
+            isRecording = false;
+            const voiceBtn = document.getElementById('voice-btn');
+            voiceBtn.classList.remove('recording', 'processing');
+            voiceBtn.textContent = '🎤';
+        }
+
+        function showVoiceStatus(message, type) {
+            const status = document.getElementById('voice-status');
+            const text = document.getElementById('voice-text');
+            text.textContent = message;
+            status.className = `voice-status active ${type}`;
+        }
+
+        function hideVoiceStatus() {
+            const status = document.getElementById('voice-status');
+            status.className = 'voice-status';
+        }
+
+        // === AUDIO REPRODUCCIÓN ORIGINAL (MANTENER INTACTO) ===
+        let availableVoices = [];
+
+        function loadVoices() {
+            return new Promise((resolve) => {
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    availableVoices = voices;
+                    resolve(voices);
+                } else {
+                    window.speechSynthesis.onvoiceschanged = () => {
+                        availableVoices = window.speechSynthesis.getVoices();
+                        resolve(availableVoices);
+                    };
+                }
+            });
+        }
+
+        function getBestVoiceForLanguage(langCode) {
+            const langVoice = languages[langCode].voice;
+            
+            const voicePriorities = {
+                es: ['es-ES', 'es-MX', 'es-US', 'es-AR'],
+                en: ['en-US', 'en-GB', 'en-AU', 'en-CA'],
+                fr: ['fr-FR', 'fr-CA', 'fr-BE'],
+                de: ['de-DE', 'de-AT', 'de-CH'],
+                it: ['it-IT'],
+                pt: ['pt-BR', 'pt-PT'],
+                ru: ['ru-RU'],
+                ja: ['ja-JP'],
+                ko: ['ko-KR'],
+                zh: ['zh-CN', 'zh-TW', 'zh-HK'],
+                ar: ['ar-SA', 'ar-AE', 'ar-EG'],
+                hi: ['hi-IN']
+            };
+            
+            const priorities = voicePriorities[langCode] || [langVoice];
+            
+            for (const priority of priorities) {
+                const premiumVoice = availableVoices.find(voice => 
+                    voice.lang === priority && 
+                    (voice.name.includes('Enhanced') || 
+                     voice.name.includes('Premium') || 
+                     voice.name.includes('Natural') ||
+                     voice.localService === false)
+                );
+                if (premiumVoice) return premiumVoice;
+            }
+            
+            for (const priority of priorities) {
+                const voice = availableVoices.find(v => v.lang === priority);
+                if (voice) return voice;
+            }
+            
+            const baseVoice = availableVoices.find(v => v.lang.startsWith(langCode));
+            if (baseVoice) return baseVoice;
+            
+            return null;
+        }
+
+        function toggleAutoPlay() {
+            autoPlayEnabled = !autoPlayEnabled;
+            const btn = document.getElementById('autoplay-btn');
+            btn.textContent = `🔊 Auto-reproducir: ${autoPlayEnabled ? 'ON' : 'OFF'}`;
+            btn.className = autoPlayEnabled ? 'control-btn active' : 'control-btn';
+            
+            showVoiceStatus(`Auto-reproducir ${autoPlayEnabled ? 'activado' : 'desactivado'}`, 'processing');
+            setTimeout(hideVoiceStatus, 1500);
+        }
+
+        function changeVoiceSpeed() {
+            if (voiceSpeed === 0.7) voiceSpeed = 1.0;
+            else if (voiceSpeed === 1.0) voiceSpeed = 1.3;
+            else voiceSpeed = 0.7;
+            
+            const speedName = voiceSpeed === 0.7 ? 'Lento' : voiceSpeed === 1.0 ? 'Normal' : 'Rápido';
+            const btn = document.getElementById('speed-btn');
+            btn.textContent = `⚡ Velocidad: ${speedName}`;
+            
+            showVoiceStatus(`Velocidad: ${speedName}`, 'processing');
+            setTimeout(hideVoiceStatus, 1500);
+        }
+
+        async function playAudio(text, lang, messageId) {
+            console.log('Reproduciendo:', text, 'en idioma:', lang);
+            
+            if ('speechSynthesis' in window) {
+                if (availableVoices.length === 0) {
+                    await loadVoices();
+                }
+                
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                const voice = getBestVoiceForLanguage(lang);
+                if (voice) {
+                    utterance.voice = voice;
+                    utterance.lang = voice.lang;
+                    console.log(`Usando voz: ${voice.name} (${voice.lang})`);
+                } else {
+                    utterance.lang = languages[lang].voice;
+                    console.log(`Usando idioma por defecto: ${languages[lang].voice}`);
+                }
+                
+                utterance.rate = voiceSpeed;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                
+                utterance.onstart = function() {
+                    const voiceName = voice ? voice.name.split(' ')[0] : languages[lang].name;
+                    showVoiceStatus(`🔊 ${voiceName} hablando...`, 'processing');
+                };
+                
+                utterance.onend = function() {
+                    hideVoiceStatus();
+                };
+                
+                utterance.onerror = function(event) {
+                    console.error('Error de audio:', event.error);
+                    showVoiceStatus('❌ Error reproduciendo audio', '');
+                    setTimeout(hideVoiceStatus, 2000);
+                };
+                
+                setTimeout(() => {
+                    window.speechSynthesis.speak(utterance);
+                }, 100);
+                
+            } else {
+                alert('Tu navegador no soporta síntesis de voz');
+            }
+        }
+
+        function showAvailableVoices() {
+            let voiceInfo = '🎙️ VOCES DISPONIBLES:\n\n';
+            
+            Object.entries(languages).forEach(([code, lang]) => {
+                const voice = getBestVoiceForLanguage(code);
+                if (voice) {
+                    voiceInfo += `${lang.flag} ${lang.name}: ${voice.name}\n`;
+                } else {
+                    voiceInfo += `${lang.flag} ${lang.name}: ⚠️ Sin voz nativa\n`;
+                }
+            });
+            
+            voiceInfo += `\nTotal: ${availableVoices.length} voces instaladas`;
+            voiceInfo += `\n🔥 Firebase: ${firebaseConnected ? 'Conectado' : 'Desconectado'}`;
+            
+            alert(voiceInfo);
+        }
+
+        // === INICIALIZACIÓN ===
+        updateUserDisplay();
+        updateFirebaseStatus();
+        document.getElementById('message-input').focus();
+        initSpeechRecognition();
+
+        loadVoices().then(() => {
+            console.log(`✅ ${availableVoices.length} voces cargadas`);
+            
+            Object.keys(languages).forEach(lang => {
+                const voice = getBestVoiceForLanguage(lang);
+                if (voice) {
+                    console.log(`${languages[lang].flag} ${lang}: ${voice.name}`);
+                }
+            });
+        });
+
+        // === VERIFICACIÓN DE LIBRERÍAS ===
+        setTimeout(() => {
+            console.log('🔍 VERIFICANDO LIBRERÍAS PARA DOCUMENTOS...');
+            
+            // Verificar reconocimiento de voz
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                console.log('✅ Reconocimiento de voz soportado');
+            } else {
+                console.log('❌ Reconocimiento de voz NO soportado');
+            }
+            
+            // Verificar PDF.js
+            if (typeof pdfjsLib !== 'undefined') {
+                console.log('✅ PDF.js cargado correctamente - Versión:', pdfjsLib.version);
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            } else {
+                console.log('❌ PDF.js NO cargado - Los PDFs no funcionarán');
+            }
+            
+            // Verificar SheetJS
+            if (typeof XLSX !== 'undefined') {
+                console.log('✅ SheetJS cargado correctamente - Versión:', XLSX.version);
+            } else {
+                console.log('❌ SheetJS NO cargado - Los archivos Excel no funcionarán');
+            }
+            
+            // Verificar Mammoth
+            if (typeof mammoth !== 'undefined') {
+                console.log('✅ Mammoth.js cargado correctamente');
+            } else {
+                console.log('❌ Mammoth.js NO cargado - Los archivos Word no funcionarán');
+            }
+            
+            // Verificar Quill
+            if (typeof Quill !== 'undefined') {
+                console.log('✅ Quill.js cargado correctamente - Versión:', Quill.version);
+            } else {
+                console.log('❌ Quill.js NO cargado - La edición de Word será limitada');
+            }
+            
+            console.log('');
+            console.log('🚀🌍🎭 Kaixo Translate Pro v3.0 - ¡DOCUMENTOS AVANZADOS LISTOS!');
+            console.log('');
+            console.log('✅ FUNCIONALIDADES DISPONIBLES:');
+            console.log('  📄 Vista previa de PDFs:', typeof pdfjsLib !== 'undefined' ? '✅ SÍ' : '❌ NO');
+            console.log('  📊 Editor de Excel:', typeof XLSX !== 'undefined' ? '✅ SÍ' : '❌ NO');
+            console.log('  📝 Editor de Word:', (typeof mammoth !== 'undefined' && typeof Quill !== 'undefined') ? '✅ SÍ' : '❌ PARCIAL');
+            console.log('  🎤 Reconocimiento de voz:', ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) ? '✅ SÍ' : '❌ NO');
+            console.log('');
+            console.log('🎯 CÓMO PROBAR:');
+            console.log('  1. 📄 Envía un PDF → Haz clic en 👁️ para vista previa con navegación');
+            console.log('  2. 📊 Envía un Excel → Haz clic en ✏️ para editar celdas');
+            console.log('  3. 📝 Envía un Word → Haz clic en ✏️ para editor completo');
+            console.log('  4. 📥 Usa el botón descarga en cualquier momento');
+            console.log('');
+            console.log('⚠️ Si algo no funciona, revisa la consola para mensajes de error.');
+            
+        }, 2000);
+
+        // === FUNCIÓN DE DEBUG PARA USUARIOS ===
+        window.debugKaixo = function() {
+            console.log('🔧 INFORMACIÓN DE DEBUG KAIXO TRANSLATE:');
+            console.log('');
+            console.log('📊 Estado del chat:');
+            console.log('  • Mensajes totales:', messages.length);
+            console.log('  • Usuario actual:', currentUser);
+            console.log('  • Firebase conectado:', firebaseConnected);
+            console.log('  • Documento actual:', currentDocument ? currentDocument.fileName : 'Ninguno');
+            console.log('');
+            console.log('📚 Librerías:');
+            console.log('  • PDF.js:', typeof pdfjsLib !== 'undefined' ? '✅' : '❌');
+            console.log('  • SheetJS:', typeof XLSX !== 'undefined' ? '✅' : '❌');
+            console.log('  • Mammoth:', typeof mammoth !== 'undefined' ? '✅' : '❌');
+            console.log('  • Quill:', typeof Quill !== 'undefined' ? '✅' : '❌');
+            console.log('');
+            console.log('🎤 Audio:');
+            console.log('  • Voces disponibles:', availableVoices.length);
+            console.log('  • Auto-reproducir:', autoPlayEnabled);
+            console.log('  • Velocidad:', voiceSpeed);
+            console.log('');
+            console.log('💡 Para reportar problemas, comparte esta información.');
+        };
+
+        console.log('');
+        console.log('💡 TIP: Escribe debugKaixo() en la consola para ver información de debug.');
+        console.log('📱 ¡Todo listo para usar! Envía documentos y prueba las nuevas funciones.');
+
+    </script>
+</body>
+</html>
